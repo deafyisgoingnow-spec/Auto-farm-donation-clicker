@@ -1,0 +1,49 @@
+local p = game.Players.LocalPlayer
+local char = p.Character or p.CharacterAdded:Wait()
+local root = char:WaitForChild("HumanoidRootPart")
+local vu = game:GetService("VirtualUser")
+
+-- 1. NASTAVENÍ (Souřadnice lobby - uprav si je podle potřeby)
+local lobbyPos = Vector3.new(0, 100, 0) -- Tady by mělo být bezpečné místo v lobby
+
+-- 2. ANTI-AFK
+p.Idled:Connect(function()
+    vu:CaptureController()
+    vu:ClickButton2(Vector2.new())
+end)
+
+-- 3. FUNKCE PRO SBÍRÁNÍ (Lucky Blocky, OG, Secret)
+spawn(function()
+    while true do
+        task.wait(0.5) -- Skenuje mapu každou půl sekundu
+        for _, item in pairs(game.Workspace:GetChildren()) do
+            -- Hledá Smurf Lucky Blocky nebo věci s názvem "OG" / "Secret"
+            if item:IsA("Model") or item:IsA("Part") then
+                if item.Name:find("Lucky") or item.Name:find("OG") or item.Name:find("Secret") or item.Name:find("Smurf") then
+                    -- TELEPORT K ITEMU
+                    if item:FindFirstChild("Handle") then
+                        root.CFrame = item.Handle.CFrame
+                    else
+                        root.CFrame = item:GetModelCFrame() or item.CFrame
+                    end
+                    task.wait(0.2) -- Čas na sebrání
+                end
+            end
+        end
+    end
+end)
+
+-- 4. AUTO-LOBBY TELEPORT (Když skončí vlna)
+-- Pokud tě hra nezabije, script tě po sebrání itemů může držet v bezpečí
+spawn(function()
+    while true do
+        -- Pokud zrovna nic nesbíráš, drž se v lobby nebo v úkrytu
+        -- Tady můžeš přidat podmínku, pokud hra hlásí "Intermission"
+        task.wait(5)
+    end
+end)
+
+game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
+    Text = "[LUKAS-BOT]: Hunter OG a Secret itemů zapnut!";
+    Color = Color3.fromRGB(255, 0, 0);
+})
