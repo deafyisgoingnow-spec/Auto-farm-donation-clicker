@@ -1,38 +1,38 @@
 local p = game.Players.LocalPlayer
 local pgui = p:WaitForChild("PlayerGui")
 local runService = game:GetService("RunService")
+local vu = game:GetService("VirtualUser")
 
--- 1. ZPRÁVA DO CHATU (ať víš, že to běží)
+-- 1. ZPRÁVA DO CHATU
 game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
-    Text = "LUKAS-BOT AKTIVOVAN! Cíl: 500k kliků.";
+    Text = "LUKAS-BOT V2 AKTIVOVAN! Tlačítka zůstanou.";
     Color = Color3.fromRGB(0, 255, 0);
 })
 
--- 2. ANTI-AFK (Zabrání vykopnutí ze serveru)
-local vu = game:GetService("VirtualUser")
+-- 2. ANTI-AFK
 p.Idled:Connect(function()
     vu:CaptureController()
     vu:ClickButton2(Vector2.new())
 end)
 
--- 3. EXTRÉMNÍ AUTO-CLICKER (Kliká každých 0.01 sekundy)
+-- 3. AUTO-CLICKER (upravený na střed nebo 0,0)
 spawn(function()
     while true do
-        -- Simuluje kliknutí na hlavní tlačítko uprostřed obrazovky
-        vu:Button1Down(Vector2.new(500, 500))
+        vu:Button1Down(Vector2.new(0, 0))
         wait(0.01)
-        vu:Button1Up(Vector2.new(500, 500))
+        vu:Button1Up(Vector2.new(0, 0))
     end
 end)
 
--- 4. MAZÁNÍ TABULEK (Ničitel tabulky "123")
+-- 4. CHYTRÉ SKRÝVÁNÍ (Nemaže, jen vypíná tabulku 123)
 runService.RenderStepped:Connect(function()
     for _, v in pairs(pgui:GetChildren()) do
-        -- Smaže všechna nová okna kromě chatu a ovládání mobilu
-        if v:IsA("ScreenGui") and v.Name ~= "Chat" and v.Name ~= "BubbleChat" and v.Name ~= "TouchGui" then
-            v:Destroy()
+        -- Tady to vypne JEN tabulku, co obsahuje "123" nebo se jmenuje "Check"
+        -- Ostatní tlačítka (Shop, Klikání) ti díky tomu nezmizí
+        if v:IsA("ScreenGui") and (v.Name:find("123") or v.Name == "Check") then
+            v.Enabled = false
         end
     end
 end)
 
-print("Script pro Lukáše je připraven na 500k grind!")
+print("Script V2 nahozen!")
