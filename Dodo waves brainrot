@@ -3,47 +3,50 @@ local char = p.Character or p.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 local vu = game:GetService("VirtualUser")
 
--- 1. NASTAVENÍ (Souřadnice lobby - uprav si je podle potřeby)
-local lobbyPos = Vector3.new(0, 100, 0) -- Tady by mělo být bezpečné místo v lobby
+-- 1. ZAMERENÍ POZICE (Uloží tvůj hiding spot hned po spuštění)
+local safeSpot = root.CFrame 
 
--- 2. ANTI-AFK
+game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
+    Text = "[LUKAS-BOT]: AFK Farma zapnuta! Hledám Smurfy, OG a Secret věci.";
+    Color = Color3.fromRGB(0, 255, 255);
+})
+
+-- 2. ANTI-AFK (Ať tě to nevyhodí)
 p.Idled:Connect(function()
     vu:CaptureController()
     vu:ClickButton2(Vector2.new())
 end)
 
--- 3. FUNKCE PRO SBÍRÁNÍ (Lucky Blocky, OG, Secret)
+-- 3. AUTOMATICKÝ SBĚRAČ A TELEPORT
 spawn(function()
     while true do
-        task.wait(0.5) -- Skenuje mapu každou půl sekundu
-        for _, item in pairs(game.Workspace:GetChildren()) do
-            -- Hledá Smurf Lucky Blocky nebo věci s názvem "OG" / "Secret"
-            if item:IsA("Model") or item:IsA("Part") then
-                if item.Name:find("Lucky") or item.Name:find("OG") or item.Name:find("Secret") or item.Name:find("Smurf") then
-                    -- TELEPORT K ITEMU
-                    if item:FindFirstChild("Handle") then
-                        root.CFrame = item.Handle.CFrame
-                    else
-                        root.CFrame = item:GetModelCFrame() or item.CFrame
-                    end
-                    task.wait(0.2) -- Čas na sebrání
+        task.wait(0.2) -- Skenuje mapu bleskově
+        local foundAnything = false
+        
+        for _, item in pairs(game.Workspace:GetDescendants()) do
+            -- Kontrola všech názvů, které chceš sbírat
+            if item.Name:find("Smurf") or item.Name:find("Lucky") or item.Name:find("OG") or item.Name:find("Secret") then
+                -- Najde část, ke které se dá portnout
+                local target = nil
+                if item:IsA("BasePart") then
+                    target = item
+                elseif item:FindFirstChildWhichIsA("BasePart") then
+                    target = item:FindFirstChildWhichIsA("BasePart")
+                end
+                
+                if target then
+                    foundAnything = true
+                    -- Rychlý skok pro item a hned zpět do bezpečí
+                    root.CFrame = target.CFrame
+                    task.wait(0.1) 
+                    root.CFrame = safeSpot
                 end
             end
         end
+        
+        -- Pokud nic nenašel, pro jistotu tě drží na místě
+        if not foundAnything then
+            root.CFrame = safeSpot
+        end
     end
 end)
-
--- 4. AUTO-LOBBY TELEPORT (Když skončí vlna)
--- Pokud tě hra nezabije, script tě po sebrání itemů může držet v bezpečí
-spawn(function()
-    while true do
-        -- Pokud zrovna nic nesbíráš, drž se v lobby nebo v úkrytu
-        -- Tady můžeš přidat podmínku, pokud hra hlásí "Intermission"
-        task.wait(5)
-    end
-end)
-
-game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
-    Text = "[LUKAS-BOT]: Hunter OG a Secret itemů zapnut!";
-    Color = Color3.fromRGB(255, 0, 0);
-})
