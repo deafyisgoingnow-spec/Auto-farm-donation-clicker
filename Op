@@ -1,38 +1,30 @@
 local p = game.Players.LocalPlayer
-local pgui = p:WaitForChild("PlayerGui")
 local runService = game:GetService("RunService")
 local vu = game:GetService("VirtualUser")
 
--- 1. ZPRÁVA DO CHATU
-game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
-    Text = "LUKAS-BOT V2 AKTIVOVAN! Tlačítka zůstanou.";
-    Color = Color3.fromRGB(0, 255, 0);
-})
-
--- 2. ANTI-AFK
+-- ANTI-AFK (pořádně silný)
 p.Idled:Connect(function()
     vu:CaptureController()
     vu:ClickButton2(Vector2.new())
 end)
 
--- 3. AUTO-CLICKER (upravený na střed nebo 0,0)
+-- TURBO CLICKER
 spawn(function()
     while true do
-        vu:Button1Down(Vector2.new(0, 0))
-        wait(0.01)
-        vu:Button1Up(Vector2.new(0, 0))
+        -- Místo jednoho kliknutí jich pošleme 5 najednou v jedné smyčce
+        for i = 1, 5 do
+            vu:Button1Down(Vector2.new(0, 0))
+            vu:Button1Up(Vector2.new(0, 0))
+        end
+        task.wait() -- Nejkratší možná pauza
     end
 end)
 
--- 4. CHYTRÉ SKRÝVÁNÍ (Nemaže, jen vypíná tabulku 123)
+-- SKRÝVÁNÍ TABULKY 123
 runService.RenderStepped:Connect(function()
-    for _, v in pairs(pgui:GetChildren()) do
-        -- Tady to vypne JEN tabulku, co obsahuje "123" nebo se jmenuje "Check"
-        -- Ostatní tlačítka (Shop, Klikání) ti díky tomu nezmizí
+    for _, v in pairs(p.PlayerGui:GetChildren()) do
         if v:IsA("ScreenGui") and (v.Name:find("123") or v.Name == "Check") then
             v.Enabled = false
         end
     end
 end)
-
-print("Script V2 nahozen!")
