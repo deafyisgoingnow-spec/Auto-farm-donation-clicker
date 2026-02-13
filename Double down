@@ -1,127 +1,79 @@
--- Načtení Orion knihovny
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local Window = OrionLib:MakeWindow({Name = "Double down free version", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionTest"})
 
--- Hlavní okno
-local Window = OrionLib:MakeWindow({
-    Name = "Double down free version", 
-    HidePremium = false, 
-    SaveConfig = true, 
-    ConfigFolder = "LukasConfig"
+local Tab = Window:MakeTab({
+	Name = "autofarm",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
 })
 
--- Proměnné
-local gamepassId = "1705868609" 
-local gameName = "TIC TAC TOE"
-local ticketValue = "10"
-local assetType = "GamePass"
-getgenv().SwordBotActive = false
-
--- TVORBA MOBILNÍHO TLAČÍTKA PRO SWORD BOT
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-local MobileBtn = Instance.new("TextButton", ScreenGui)
-MobileBtn.Size = UDim2.new(0, 100, 0, 40)
-MobileBtn.Position = UDim2.new(0, 10, 0, 150)
-MobileBtn.Text = "SWORD: OFF"
-MobileBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-MobileBtn.TextColor3 = Color3.new(1, 1, 1)
-MobileBtn.Visible = false -- Zobrazí se až po aktivaci v menu
-Instance.new("UICorner", MobileBtn)
-
--- KARTA 1: AUTOFARM
-local Tab1 = Window:MakeTab({
-    Name = "autofarm",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
+local Section = Tab:AddSection({
+	Name = "autofarm"
 })
 
-Tab1:AddTextbox({
-    Name = "gamepass",
-    Default = gamepassId,
-    Callback = function(val) gamepassId = val end      
+Tab:AddTextbox({
+	Name = "gamepass ",
+	Default = "put gamepass id here",
+	TextDisappear = true,
+	Callback = function(gamepass)
+		getgenv().pass = gamepass
+	end	  
 })
 
-Tab1:AddTextbox({
-    Name = "name game",
-    Default = "TIC TAC TOE",
-    Callback = function(val) gameName = val:upper() end      
+Tab:AddTextbox({
+	Name = "name game",
+	Default = "SWORD FIGHT",
+	TextDisappear = true,
+	Callback = function(game)
+		getgenv().games = game
+	end	  
 })
 
-Tab1:AddToggle({
-    Name = "Start Autofarm",
-    Default = false,
-    Callback = function(state)
+Tab:AddTextbox({
+	Name = "put ticket ",
+	Default = "20",
+	TextDisappear = true,
+	Callback = function(Option)
+		getgenv().ticket = tonumber(Option)
+	end	  
+})
+
+Tab:AddDropdown({
+	Name = "asset type",
+	Default = "GamePass",
+	Options = {"Asset", "GamePass"},
+	Callback = function(section)
+		getgenv().asset = section
+	end    
+})
+
+Tab:AddToggle({
+	Name = "autofarm",
+	Default = false,
+	Callback = function(state)
         getgenv().autofarm = state
-        spawn(function()
-            while getgenv().autofarm do
-                local args = {[1] = gameName, [2] = tonumber(ticketValue), [3] = {["assetType"] = assetType, ["assetId"] = gamepassId}, [4] = true}
-                game:GetService("ReplicatedStorage"):WaitForChild("RemoteCalls"):WaitForChild("GameSpecific"):WaitForChild("Tickets"):WaitForChild("CreateRoom"):InvokeServer(unpack(args))
-                task.wait(45)
-            end
-        end)
-    end    
-})
-
--- KARTA 2: COMBAT
-local Tab2 = Window:MakeTab({
-    Name = "Combat",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
-
-Tab2:AddButton({
-    Name = "Aktivovat Mobile Sword Bot",
-    Callback = function()
-        MobileBtn.Visible = true
-        OrionLib:MakeNotification({Name = "Sword Bot", Content = "Použij tlačítko na displeji pro zapnutí!", Time = 5})
-    end
-})
-
--- LOGIKA BOJE
-MobileBtn.MouseButton1Click:Connect(function()
-    getgenv().SwordBotActive = not getgenv().SwordBotActive
-    MobileBtn.Text = getgenv().SwordBotActive and "SWORD: ON" or "SWORD: OFF"
-    MobileBtn.BackgroundColor3 = getgenv().SwordBotActive and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(50, 50, 50)
-    game.Players.LocalPlayer.Character.Humanoid.AutoRotate = not getgenv().SwordBotActive
-end)
-
-game:GetService("RunService").RenderStepped:Connect(function()
-    if getgenv().SwordBotActive then
-        local p = game.Players.LocalPlayer
-        local char = p.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local tool = char and char:FindFirstChildOfClass("Tool")
-
-        if hum and hum.FloorMaterial ~= Enum.Material.Air then hum.Jump = true end
-        if tool and tool:FindFirstChild("Handle") then
-            tool:Activate()
-            for _, v in pairs(game.Players:GetPlayers()) do
-                if v ~= p and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                    local dist = (v.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).magnitude
-                    if dist <= 18 then
-                        firetouchinterest(tool.Handle, v.Character.HumanoidRootPart, 0)
-                        firetouchinterest(tool.Handle, v.Character.HumanoidRootPart, 1)
-                        -- Lock-on (pohled na nepřítele)
-                        char.HumanoidRootPart.CFrame = CFrame.new(char.HumanoidRootPart.Position, Vector3.new(v.Character.HumanoidRootPart.Position.X, char.HumanoidRootPart.Position.Y, v.Character.HumanoidRootPart.Position.Z))
-                    end
-                end
-            end
+        while getgenv().autofarm do
+            local args = {
+                [1] = getgenv().games,
+                [2] = getgenv().ticket,
+                [3] = {
+                    ["assetType"] = getgenv().asset,
+                    ["assetId"] = getgenv().pass
+                },
+                [4] = true
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("RemoteCalls"):WaitForChild("GameSpecific"):WaitForChild("Tickets"):WaitForChild("CreateRoom"):InvokeServer(unpack(args))
+            task.wait(40)
         end
-    end
-end)
-
--- KARTA 3: MISC
-local Tab3 = Window:MakeTab({
-    Name = "Misc",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
+	end    
 })
 
-Tab3:AddButton({
-    Name = "Free Robux Server Access",
-    Callback = function()
+Tab:AddButton({
+	Name = "free robux only server",
+	Callback = function()
         game:GetService("Players").LocalPlayer.DataSave.Common.FillOnStart.Gamepasses.RobuxServers.Value = true
-        OrionLib:MakeNotification({Name = "Success", Content = "Robux servery odemčeny!", Time = 5})
-    end    
+        OrionLib:MakeNotification({Name = "Lukas Hub", Content = "Server Unlocked!", Time = 3})
+  	end    
 })
 
 OrionLib:Init()
