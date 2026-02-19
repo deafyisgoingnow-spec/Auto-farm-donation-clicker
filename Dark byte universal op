@@ -4,50 +4,48 @@ local TabHolder = Instance.new("Frame")
 local ContentHolder = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
 
-ScreenGui.Name = "DarkByteV2_Final"
+ScreenGui.Name = "DarkByte_Pro"
 ScreenGui.Parent = game:GetService("CoreGui")
 
--- Hlavní okno
-MainFrame.Name = "MainFrame"
+-- Hlavní GUI okno
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-MainFrame.Position = UDim2.new(0.5, -160, 0.4, 0)
-MainFrame.Size = UDim2.new(0, 320, 0, 240)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.Position = UDim2.new(0.5, -175, 0.4, 0)
+MainFrame.Size = UDim2.new(0, 350, 0, 280)
 MainFrame.Active = true
 MainFrame.Draggable = true
 Instance.new("UICorner", MainFrame)
 
--- Horní lišta
 Title.Parent = MainFrame
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "DARK BYTE V2"
+Title.Text = "DARK BYTE PRO - UNIVERSAL"
 Title.TextColor3 = Color3.fromRGB(0, 170, 255)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
 
--- Kontejnery pro menu
+-- Kontejnery
 TabHolder.Parent = MainFrame
 TabHolder.Position = UDim2.new(0, 5, 0, 45)
-TabHolder.Size = UDim2.new(0, 80, 1, -50)
+TabHolder.Size = UDim2.new(0, 90, 1, -55)
 TabHolder.BackgroundTransparency = 1
 
 ContentHolder.Parent = MainFrame
-ContentHolder.Position = UDim2.new(0, 95, 0, 45)
-ContentHolder.Size = UDim2.new(1, -105, 1, -50)
+ContentHolder.Position = UDim2.new(0, 100, 0, 45)
+ContentHolder.Size = UDim2.new(1, -110, 1, -55)
 ContentHolder.BackgroundTransparency = 1
 
 local VisualFrame = Instance.new("ScrollingFrame", ContentHolder)
-VisualFrame.Size = UDim2.new(1, 0, 1, 0)
-VisualFrame.BackgroundTransparency = 1
-VisualFrame.Visible = true
-VisualFrame.ScrollBarThickness = 2
-
 local PlayerFrame = Instance.new("ScrollingFrame", ContentHolder)
-PlayerFrame.Size = UDim2.new(1, 0, 1, 0)
-PlayerFrame.BackgroundTransparency = 1
-PlayerFrame.Visible = false
-PlayerFrame.ScrollBarThickness = 2
+local FlingFrame = Instance.new("ScrollingFrame", ContentHolder)
+
+for _, f in pairs({VisualFrame, PlayerFrame, FlingFrame}) do
+    f.Size = UDim2.new(1, 0, 1, 0)
+    f.BackgroundTransparency = 1
+    f.Visible = false
+    f.ScrollBarThickness = 2
+end
+VisualFrame.Visible = true
 
 -- POMOCNÉ FUNKCE
 local function createBtn(text, parent, pos, func)
@@ -57,114 +55,97 @@ local function createBtn(text, parent, pos, func)
     btn.Text = text
     btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.Gotham
     Instance.new("UICorner", btn)
     btn.MouseButton1Click:Connect(func)
     return btn
 end
 
-local function createSlider(name, parent, min, max, pos, callback)
-    local sliderFrame = Instance.new("Frame", parent)
-    sliderFrame.Size = UDim2.new(0.9, 0, 0, 50)
-    sliderFrame.Position = pos
-    sliderFrame.BackgroundTransparency = 1
-
-    local label = Instance.new("TextLabel", sliderFrame)
-    label.Size = UDim2.new(1, 0, 0, 20)
-    label.Text = name .. ": " .. min
-    label.TextColor3 = Color3.fromRGB(200, 200, 200)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 12
-
-    local bar = Instance.new("Frame", sliderFrame)
-    bar.Size = UDim2.new(1, 0, 0, 4)
-    bar.Position = UDim2.new(0, 0, 0, 30)
-    bar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-
-    local dot = Instance.new("TextButton", bar)
-    dot.Size = UDim2.new(0, 12, 0, 12)
-    dot.Position = UDim2.new(0, 0, 0.5, -6)
-    dot.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    dot.Text = ""
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-
-    local dragging = false
-    dot.MouseButton1Down:Connect(function() dragging = true end)
-    game:GetService("UserInputService").InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
+local function createToggle(name, parent, pos, callback)
+    local btn = createBtn(name .. ": OFF", parent, pos, function() end)
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        btn.Text = name .. (active and ": ON" or ": OFF")
+        btn.TextColor3 = active and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 255, 255)
+        callback(active)
     end)
-
-    game:GetService("RunService").RenderStepped:Connect(function()
-        if dragging then
-            local inputPos = game:GetService("UserInputService"):GetMouseLocation().X
-            local relativePos = (inputPos - bar.AbsolutePosition.X) / bar.AbsoluteSize.X
-            relativePos = math.clamp(relativePos, 0, 1)
-            dot.Position = UDim2.new(relativePos, -6, 0.5, -6)
-            local val = math.floor(min + (max - min) * relativePos)
-            label.Text = name .. ": " .. val
-            callback(val)
-        end
-    end)
+    return btn
 end
 
--- SEKCE: VISUAL (BTools & ESP)
-createBtn("Get BTools", VisualFrame, UDim2.new(0, 0, 0, 5), function()
-    for _, t in pairs({"Move", "Clone", "Delete"}) do
-        local b = Instance.new("HopperBin", game.Players.LocalPlayer.Backpack)
-        b.BinType = t
-    end
+-- SEKCE: VISUAL
+createBtn("Get BTools (3 Tools)", VisualFrame, UDim2.new(0, 0, 0, 5), function()
+    local p = game.Players.LocalPlayer.Backpack
+    local b1 = Instance.new("HopperBin", p) b1.BinType = "Delete"
+    local b2 = Instance.new("HopperBin", p) b2.BinType = "Clone"
+    local b3 = Instance.new("HopperBin", p) b3.BinType = "Move"
 end)
 
-local espActive = false
-createBtn("Toggle ESP", VisualFrame, UDim2.new(0, 0, 0, 45), function()
-    espActive = not espActive
-    for _, p in pairs(game.Players:GetPlayers()) do
-        if p ~= game.Players.LocalPlayer and p.Character then
-            if espActive then
-                local highlight = Instance.new("Highlight", p.Character)
-                highlight.Name = "DarkESP"
-                highlight.FillColor = Color3.fromRGB(0, 170, 255)
-                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-            else
-                if p.Character:FindFirstChild("DarkESP") then
-                    p.Character.DarkESP:Destroy()
-                end
+local espObjects = {}
+createToggle("ESP All", VisualFrame, UDim2.new(0, 0, 0, 45), function(v)
+    if v then
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p ~= game.Players.LocalPlayer and p.Character then
+                local h = Instance.new("Highlight", p.Character)
+                h.FillColor = Color3.fromRGB(0, 170, 255)
+                table.insert(espObjects, h)
             end
         end
+    else
+        for _, h in pairs(espObjects) do if h then h:Destroy() end end
+        espObjects = {}
     end
 end)
 
--- SEKCE: PLAYER (Speed, Jump, Fly)
-createSlider("WalkSpeed", PlayerFrame, 16, 1000, UDim2.new(0, 0, 0, 5), function(v)
-    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v
+-- SEKCE: PLAYER
+local walkSpeed = 16
+createToggle("Custom Speed", PlayerFrame, UDim2.new(0, 0, 0, 5), function(v)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v and 100 or 16
 end)
 
-createSlider("JumpPower", PlayerFrame, 50, 1000, UDim2.new(0, 0, 0, 60), function(v)
-    game.Players.LocalPlayer.Character.Humanoid.JumpPower = v
+createToggle("Custom Jump", PlayerFrame, UDim2.new(0, 0, 0, 45), function(v)
+    game.Players.LocalPlayer.Character.Humanoid.JumpPower = v and 120 or 50
 end)
 
+-- SHADOW FLY
 local flying = false
-createBtn("Fly (Toggle)", PlayerFrame, UDim2.new(0, 0, 0, 120), function()
-    flying = not flying
+createToggle("Shadow Fly", PlayerFrame, UDim2.new(0, 0, 0, 85), function(v)
+    flying = v
     local char = game.Players.LocalPlayer.Character
+    local root = char.HumanoidRootPart
     if flying then
-        local bv = Instance.new("BodyVelocity", char.PrimaryPart)
-        bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-        bv.Velocity = Vector3.new(0,2,0)
-        bv.Name = "DarkFly"
+        local bg = Instance.new("BodyGyro", root)
+        bg.P = 9e4 bg.maxTorque = Vector3.new(9e9, 9e9, 9e9) bg.cframe = root.CFrame
+        local bv = Instance.new("BodyVelocity", root)
+        bv.velocity = Vector3.new(0,0.1,0) bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
         task.spawn(function()
             while flying do
-                bv.Velocity = game.Players.LocalPlayer.Character.Humanoid.MoveDirection * 100 + Vector3.new(0,2,0)
+                local cam = workspace.CurrentCamera.CFrame
+                bv.velocity = cam.LookVector * 100
+                bg.cframe = cam
                 task.wait()
             end
-            bv:Destroy()
+            bg:Destroy() bv:Destroy()
         end)
     end
 end)
 
+-- SEKCE: FLING
+createBtn("Fling All", FlingFrame, UDim2.new(0, 0, 0, 5), function()
+    local lp = game.Players.LocalPlayer
+    local char = lp.Character
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame
+            local vel = Instance.new("BodyAngularVelocity", char.HumanoidRootPart)
+            vel.AngularVelocity = Vector3.new(0, 9999, 0)
+            vel.MaxTorque = Vector3.new(0, math.huge, 0)
+            task.wait(0.2)
+            vel:Destroy()
+        end
+    end
+end)
+
 -- PŘEPÍNAČE TABŮ
-createBtn("Visual", TabHolder, UDim2.new(0, 0, 0, 0), function() VisualFrame.Visible = true PlayerFrame.Visible = false end)
-createBtn("Player", TabHolder, UDim2.new(0, 0, 0, 45), function() VisualFrame.Visible = false PlayerFrame.Visible = true end)
+createBtn("Visual", TabHolder, UDim2.new(0, 0, 0, 0), function() VisualFrame.Visible = true PlayerFrame.Visible = false FlingFrame.Visible = false end)
+createBtn("Player", TabHolder, UDim2.new(0, 0, 0, 40), function() VisualFrame.Visible = false PlayerFrame.Visible = true FlingFrame.Visible = false end)
+createBtn("Fling", TabHolder, UDim2.new(0, 0, 0, 80), function() VisualFrame.Visible = false PlayerFrame.Visible = false FlingFrame.Visible = true end)
