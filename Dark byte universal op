@@ -1,52 +1,59 @@
-local Lyrical = Instance.new("ScreenGui")
+local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
 local BToolsBtn = Instance.new("TextButton")
-local Corner = Instance.new("UICorner")
+local SpeedBtn = Instance.new("TextButton")
 
--- Nastavení GUI
-Lyrical.Name = "DarkByteGui"
-Lyrical.Parent = game.CoreGui
-
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = Lyrical
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.Position = UDim2.new(0.5, -75, 0.4, 0)
-MainFrame.Size = UDim2.new(0, 150, 0, 100)
+-- Nastavení hlavního menu
+ScreenGui.Parent = game:GetService("CoreGui")
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20) -- Tmavé pozadí
+MainFrame.Position = UDim2.new(0.5, -100, 0.4, 0)
+MainFrame.Size = UDim2.new(0, 200, 0, 150)
 MainFrame.Active = true
-MainFrame.Draggable = true -- Aby se dalo po obrazovce posouvat
+MainFrame.Draggable = true
 
-Instance.new("UICorner", MainFrame).CornerRadius = BoxBlurSize.new(0, 8)
-
+-- Název menu
 Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Text = "DARK BYTE GUI"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextColor3 = Color3.fromRGB(0, 170, 255)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
+Title.TextSize = 18
 
+-- Tlačítko pro BTools
 BToolsBtn.Parent = MainFrame
-BToolsBtn.Position = UDim2.new(0.1, 0, 0.4, 0)
-BToolsBtn.Size = UDim2.new(0.8, 0, 0.4, 0)
-BToolsBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+BToolsBtn.Size = UDim2.new(0.8, 0, 0, 35)
+BToolsBtn.Position = UDim2.new(0.1, 0, 0.35, 0)
 BToolsBtn.Text = "Get BTools"
-BToolsBtn.TextColor3 = Color3.fromRGB(0, 200, 255)
-BToolsBtn.Font = Enum.Font.Gotham
-Instance.new("UICorner", BToolsBtn)
+BToolsBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+BToolsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 
--- Funkce pro BTools
+-- Tlačítko pro Speed
+SpeedBtn.Parent = MainFrame
+SpeedBtn.Size = UDim2.new(0.8, 0, 0, 35)
+SpeedBtn.Position = UDim2.new(0.1, 0, 0.65, 0)
+SpeedBtn.Text = "Super Speed"
+SpeedBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+-- Funkce: BTools
 BToolsBtn.MouseButton1Click:Connect(function()
-    local p = game:GetService("Players").LocalPlayer
-    local backpack = p:WaitForChild("Backpack")
-    
+    local p = game.Players.LocalPlayer
     local toolNames = {"Move", "Clone", "Delete"}
-    for i, name in pairs(toolNames) do
+    for _, name in pairs(toolNames) do
         local tool = Instance.new("HopperBin")
         tool.BinType = name
-        tool.Parent = backpack
+        tool.Parent = p.Backpack
     end
-    
-    BToolsBtn.Text = "Done!"
-    task.wait(1)
-    BToolsBtn.Text = "Get BTools"
+    BToolsBtn.Text = "Hotovo!"
+end)
+
+-- Funkce: Speed
+local fast = false
+SpeedBtn.MouseButton1Click:Connect(function()
+    fast = not fast
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = fast and 100 or 16
+    SpeedBtn.Text = fast and "Speed: ON" or "Speed: OFF"
 end)
