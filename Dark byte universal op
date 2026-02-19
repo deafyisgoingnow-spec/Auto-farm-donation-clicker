@@ -1,59 +1,149 @@
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
+local TabHolder = Instance.new("Frame")
+local ContentHolder = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
-local BToolsBtn = Instance.new("TextButton")
-local SpeedBtn = Instance.new("TextButton")
 
--- Nastavení hlavního menu
+ScreenGui.Name = "DarkByteV2_Slider"
 ScreenGui.Parent = game:GetService("CoreGui")
+
+-- Hlavní okno
+MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20) -- Tmavé pozadí
-MainFrame.Position = UDim2.new(0.5, -100, 0.4, 0)
-MainFrame.Size = UDim2.new(0, 200, 0, 150)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.Position = UDim2.new(0.5, -160, 0.4, 0)
+MainFrame.Size = UDim2.new(0, 320, 0, 220)
 MainFrame.Active = true
 MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame)
 
--- Název menu
+-- Horní lišta
 Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Text = "DARK BYTE GUI"
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Text = "DARK BYTE V2"
 Title.TextColor3 = Color3.fromRGB(0, 170, 255)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 18
+Title.TextSize = 16
 
--- Tlačítko pro BTools
-BToolsBtn.Parent = MainFrame
-BToolsBtn.Size = UDim2.new(0.8, 0, 0, 35)
-BToolsBtn.Position = UDim2.new(0.1, 0, 0.35, 0)
-BToolsBtn.Text = "Get BTools"
-BToolsBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-BToolsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+-- Panely pro obsah
+TabHolder.Parent = MainFrame
+TabHolder.Position = UDim2.new(0, 5, 0, 40)
+TabHolder.Size = UDim2.new(0, 80, 1, -45)
+TabHolder.BackgroundTransparency = 1
 
--- Tlačítko pro Speed
-SpeedBtn.Parent = MainFrame
-SpeedBtn.Size = UDim2.new(0.8, 0, 0, 35)
-SpeedBtn.Position = UDim2.new(0.1, 0, 0.65, 0)
-SpeedBtn.Text = "Super Speed"
-SpeedBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-SpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ContentHolder.Parent = MainFrame
+ContentHolder.Position = UDim2.new(0, 90, 0, 40)
+ContentHolder.Size = UDim2.new(1, -100, 1, -45)
+ContentHolder.BackgroundTransparency = 1
 
--- Funkce: BTools
-BToolsBtn.MouseButton1Click:Connect(function()
-    local p = game.Players.LocalPlayer
-    local toolNames = {"Move", "Clone", "Delete"}
-    for _, name in pairs(toolNames) do
-        local tool = Instance.new("HopperBin")
-        tool.BinType = name
-        tool.Parent = p.Backpack
+local VisualFrame = Instance.new("ScrollingFrame", ContentHolder)
+VisualFrame.Size = UDim2.new(1, 0, 1, 0)
+VisualFrame.BackgroundTransparency = 1
+VisualFrame.Visible = true
+VisualFrame.CanvasSize = UDim2.new(0,0,1.5,0)
+
+local PlayerFrame = Instance.new("ScrollingFrame", ContentHolder)
+PlayerFrame.Size = UDim2.new(1, 0, 1, 0)
+PlayerFrame.BackgroundTransparency = 1
+PlayerFrame.Visible = false
+PlayerFrame.CanvasSize = UDim2.new(0,0,1.5,0)
+
+-- FUNKCE PRO POSUVNÍK (SLIDER)
+local function createSlider(name, parent, min, max, pos, callback)
+    local sliderFrame = Instance.new("Frame", parent)
+    sliderFrame.Size = UDim2.new(0.9, 0, 0, 45)
+    sliderFrame.Position = pos
+    sliderFrame.BackgroundTransparency = 1
+
+    local label = Instance.new("TextLabel", sliderFrame)
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Text = name .. ": " .. min
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+
+    local bar = Instance.new("Frame", sliderFrame)
+    bar.Size = UDim2.new(1, 0, 0, 5)
+    bar.Position = UDim2.new(0, 0, 0, 25)
+    bar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+    local dot = Instance.new("TextButton", bar)
+    dot.Size = UDim2.new(0, 10, 0, 20)
+    dot.Position = UDim2.new(0, 0, 0.5, -10)
+    dot.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    dot.Text = ""
+    Instance.new("UICorner", dot)
+
+    local dragging = false
+    dot.MouseButton1Down:Connect(function() dragging = true end)
+    game:GetService("UserInputService").InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if dragging then
+            local mousePos = game:GetService("UserInputService"):GetMouseLocation().X
+            local relativePos = (mousePos - bar.AbsolutePosition.X) / bar.AbsoluteSize.X
+            relativePos = math.clamp(relativePos, 0, 1)
+            dot.Position = UDim2.new(relativePos, -5, 0.5, -10)
+            local val = math.floor(min + (max - min) * relativePos)
+            label.Text = name .. ": " .. val
+            callback(val)
+        end
+    end)
+end
+
+-- KATEGORIE: VISUAL
+local function createBtn(text, parent, pos, func)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = pos
+    btn.Text = text
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", btn)
+    btn.MouseButton1Click:Connect(func)
+end
+
+createBtn("Get BTools", VisualFrame, UDim2.new(0, 0, 0, 5), function()
+    for _, t in pairs({"Move", "Clone", "Delete"}) do
+        local b = Instance.new("HopperBin", game.Players.LocalPlayer.Backpack)
+        b.BinType = t
     end
-    BToolsBtn.Text = "Hotovo!"
 end)
 
--- Funkce: Speed
-local fast = false
-SpeedBtn.MouseButton1Click:Connect(function()
-    fast = not fast
-    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = fast and 100 or 16
-    SpeedBtn.Text = fast and "Speed: ON" or "Speed: OFF"
+-- KATEGORIE: PLAYER
+createSlider("WalkSpeed", PlayerFrame, 16, 1000, UDim2.new(0, 0, 0, 5), function(v)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v
 end)
+
+createSlider("JumpPower", PlayerFrame, 50, 1000, UDim2.new(0, 0, 0, 55), function(v)
+    game.Players.LocalPlayer.Character.Humanoid.JumpPower = v
+end)
+
+local flying = false
+createBtn("Fly (Toggle)", PlayerFrame, UDim2.new(0, 0, 0, 110), function()
+    flying = not flying
+    local char = game.Players.LocalPlayer.Character
+    if flying then
+        local bv = Instance.new("BodyVelocity", char.PrimaryPart)
+        bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+        bv.Velocity = Vector3.new(0,0,0)
+        bv.Name = "DarkFly"
+        task.spawn(function()
+            while flying do
+                bv.Velocity = game.Players.LocalPlayer.Character.Humanoid.MoveDirection * 100 + Vector3.new(0,2,0)
+                task.wait()
+            end
+            bv:Destroy()
+        end)
+    end
+end)
+
+-- PŘEPÍNÁNÍ TABŮ
+createBtn("Visual", TabHolder, UDim2.new(0, 0, 0, 0), function() VisualFrame.Visible = true PlayerFrame.Visible = false end)
+createBtn("Player", TabHolder, UDim2.new(0, 0, 0, 45), function() VisualFrame.Visible = false PlayerFrame.Visible = true end)
