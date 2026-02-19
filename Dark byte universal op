@@ -4,15 +4,15 @@ local TabHolder = Instance.new("Frame")
 local ContentHolder = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
 
-ScreenGui.Name = "DarkByteV2_Slider"
+ScreenGui.Name = "DarkByteV2_Final"
 ScreenGui.Parent = game:GetService("CoreGui")
 
 -- Hlavní okno
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 MainFrame.Position = UDim2.new(0.5, -160, 0.4, 0)
-MainFrame.Size = UDim2.new(0, 320, 0, 220)
+MainFrame.Size = UDim2.new(0, 320, 0, 240)
 MainFrame.Active = true
 MainFrame.Draggable = true
 Instance.new("UICorner", MainFrame)
@@ -24,57 +24,70 @@ Title.Text = "DARK BYTE V2"
 Title.TextColor3 = Color3.fromRGB(0, 170, 255)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 16
+Title.TextSize = 18
 
--- Panely pro obsah
+-- Kontejnery pro menu
 TabHolder.Parent = MainFrame
-TabHolder.Position = UDim2.new(0, 5, 0, 40)
-TabHolder.Size = UDim2.new(0, 80, 1, -45)
+TabHolder.Position = UDim2.new(0, 5, 0, 45)
+TabHolder.Size = UDim2.new(0, 80, 1, -50)
 TabHolder.BackgroundTransparency = 1
 
 ContentHolder.Parent = MainFrame
-ContentHolder.Position = UDim2.new(0, 90, 0, 40)
-ContentHolder.Size = UDim2.new(1, -100, 1, -45)
+ContentHolder.Position = UDim2.new(0, 95, 0, 45)
+ContentHolder.Size = UDim2.new(1, -105, 1, -50)
 ContentHolder.BackgroundTransparency = 1
 
 local VisualFrame = Instance.new("ScrollingFrame", ContentHolder)
 VisualFrame.Size = UDim2.new(1, 0, 1, 0)
 VisualFrame.BackgroundTransparency = 1
 VisualFrame.Visible = true
-VisualFrame.CanvasSize = UDim2.new(0,0,1.5,0)
+VisualFrame.ScrollBarThickness = 2
 
 local PlayerFrame = Instance.new("ScrollingFrame", ContentHolder)
 PlayerFrame.Size = UDim2.new(1, 0, 1, 0)
 PlayerFrame.BackgroundTransparency = 1
 PlayerFrame.Visible = false
-PlayerFrame.CanvasSize = UDim2.new(0,0,1.5,0)
+PlayerFrame.ScrollBarThickness = 2
 
--- FUNKCE PRO POSUVNÍK (SLIDER)
+-- POMOCNÉ FUNKCE
+local function createBtn(text, parent, pos, func)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = pos
+    btn.Text = text
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.Gotham
+    Instance.new("UICorner", btn)
+    btn.MouseButton1Click:Connect(func)
+    return btn
+end
+
 local function createSlider(name, parent, min, max, pos, callback)
     local sliderFrame = Instance.new("Frame", parent)
-    sliderFrame.Size = UDim2.new(0.9, 0, 0, 45)
+    sliderFrame.Size = UDim2.new(0.9, 0, 0, 50)
     sliderFrame.Position = pos
     sliderFrame.BackgroundTransparency = 1
 
     local label = Instance.new("TextLabel", sliderFrame)
     label.Size = UDim2.new(1, 0, 0, 20)
     label.Text = name .. ": " .. min
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.Gotham
     label.TextSize = 12
 
     local bar = Instance.new("Frame", sliderFrame)
-    bar.Size = UDim2.new(1, 0, 0, 5)
-    bar.Position = UDim2.new(0, 0, 0, 25)
-    bar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    bar.Size = UDim2.new(1, 0, 0, 4)
+    bar.Position = UDim2.new(0, 0, 0, 30)
+    bar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 
     local dot = Instance.new("TextButton", bar)
-    dot.Size = UDim2.new(0, 10, 0, 20)
-    dot.Position = UDim2.new(0, 0, 0.5, -10)
+    dot.Size = UDim2.new(0, 12, 0, 12)
+    dot.Position = UDim2.new(0, 0, 0.5, -6)
     dot.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
     dot.Text = ""
-    Instance.new("UICorner", dot)
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
 
     local dragging = false
     dot.MouseButton1Down:Connect(function() dragging = true end)
@@ -86,10 +99,10 @@ local function createSlider(name, parent, min, max, pos, callback)
 
     game:GetService("RunService").RenderStepped:Connect(function()
         if dragging then
-            local mousePos = game:GetService("UserInputService"):GetMouseLocation().X
-            local relativePos = (mousePos - bar.AbsolutePosition.X) / bar.AbsoluteSize.X
+            local inputPos = game:GetService("UserInputService"):GetMouseLocation().X
+            local relativePos = (inputPos - bar.AbsolutePosition.X) / bar.AbsoluteSize.X
             relativePos = math.clamp(relativePos, 0, 1)
-            dot.Position = UDim2.new(relativePos, -5, 0.5, -10)
+            dot.Position = UDim2.new(relativePos, -6, 0.5, -6)
             local val = math.floor(min + (max - min) * relativePos)
             label.Text = name .. ": " .. val
             callback(val)
@@ -97,18 +110,7 @@ local function createSlider(name, parent, min, max, pos, callback)
     end)
 end
 
--- KATEGORIE: VISUAL
-local function createBtn(text, parent, pos, func)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(0.9, 0, 0, 35)
-    btn.Position = pos
-    btn.Text = text
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Instance.new("UICorner", btn)
-    btn.MouseButton1Click:Connect(func)
-end
-
+-- SEKCE: VISUAL (BTools & ESP)
 createBtn("Get BTools", VisualFrame, UDim2.new(0, 0, 0, 5), function()
     for _, t in pairs({"Move", "Clone", "Delete"}) do
         local b = Instance.new("HopperBin", game.Players.LocalPlayer.Backpack)
@@ -116,23 +118,42 @@ createBtn("Get BTools", VisualFrame, UDim2.new(0, 0, 0, 5), function()
     end
 end)
 
--- KATEGORIE: PLAYER
+local espActive = false
+createBtn("Toggle ESP", VisualFrame, UDim2.new(0, 0, 0, 45), function()
+    espActive = not espActive
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= game.Players.LocalPlayer and p.Character then
+            if espActive then
+                local highlight = Instance.new("Highlight", p.Character)
+                highlight.Name = "DarkESP"
+                highlight.FillColor = Color3.fromRGB(0, 170, 255)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            else
+                if p.Character:FindFirstChild("DarkESP") then
+                    p.Character.DarkESP:Destroy()
+                end
+            end
+        end
+    end
+end)
+
+-- SEKCE: PLAYER (Speed, Jump, Fly)
 createSlider("WalkSpeed", PlayerFrame, 16, 1000, UDim2.new(0, 0, 0, 5), function(v)
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v
 end)
 
-createSlider("JumpPower", PlayerFrame, 50, 1000, UDim2.new(0, 0, 0, 55), function(v)
+createSlider("JumpPower", PlayerFrame, 50, 1000, UDim2.new(0, 0, 0, 60), function(v)
     game.Players.LocalPlayer.Character.Humanoid.JumpPower = v
 end)
 
 local flying = false
-createBtn("Fly (Toggle)", PlayerFrame, UDim2.new(0, 0, 0, 110), function()
+createBtn("Fly (Toggle)", PlayerFrame, UDim2.new(0, 0, 0, 120), function()
     flying = not flying
     local char = game.Players.LocalPlayer.Character
     if flying then
         local bv = Instance.new("BodyVelocity", char.PrimaryPart)
         bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-        bv.Velocity = Vector3.new(0,0,0)
+        bv.Velocity = Vector3.new(0,2,0)
         bv.Name = "DarkFly"
         task.spawn(function()
             while flying do
@@ -144,6 +165,6 @@ createBtn("Fly (Toggle)", PlayerFrame, UDim2.new(0, 0, 0, 110), function()
     end
 end)
 
--- PŘEPÍNÁNÍ TABŮ
+-- PŘEPÍNAČE TABŮ
 createBtn("Visual", TabHolder, UDim2.new(0, 0, 0, 0), function() VisualFrame.Visible = true PlayerFrame.Visible = false end)
 createBtn("Player", TabHolder, UDim2.new(0, 0, 0, 45), function() VisualFrame.Visible = false PlayerFrame.Visible = true end)
