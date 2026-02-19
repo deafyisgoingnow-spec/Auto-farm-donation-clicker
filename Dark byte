@@ -1,0 +1,185 @@
+--[[
+    Delta Visuals & Player Hub
+    Category: Visual, Player, Fun
+    Optimized for: Delta Executor (Mobile/PC)
+]]
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Delta Hub | Open Source Edition",
+   LoadingTitle = "Načítání GitHub Scriptu...",
+   LoadingSubtitle = "by YourName",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "DeltaHub_Configs",
+      FileName = "MainConfig"
+   }
+})
+
+-- --- KATEGORIE: VISUAL ---
+local VisualTab = Window:CreateTab("Visuals", 4483362458)
+
+VisualTab:CreateButton({
+   Name = "ESP All (Highlights)",
+   Callback = function()
+       local function ApplyESP(v)
+           if v ~= game.Players.LocalPlayer and v.Character then
+               local highlight = Instance.new("Highlight")
+               highlight.Parent = v.Character
+               highlight.FillColor = Color3.fromRGB(255, 0, 0)
+               highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+               highlight.FillTransparency = 0.5
+           end
+       end
+       
+       for _, player in pairs(game.Players:GetPlayers()) do
+           ApplyESP(player)
+       end
+       
+       game.Players.PlayerAdded:Connect(ApplyESP)
+       Rayfield:Notify({Title = "Visuals", Content = "ESP Aktivováno", Duration = 3})
+   end,
+})
+
+-- --- KATEGORIE: PLAYER ---
+local PlayerTab = Window:CreateTab("Player", 4483345998)
+
+-- Speed Changer s On/Off
+local speedValue = 16
+PlayerTab:CreateToggle({
+   Name = "Enable Custom Speed",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.SpeedEnabled = Value
+      local hum = game.Players.LocalPlayer.Character.Humanoid
+      if not Value then
+         hum.WalkSpeed = 16
+      else
+         hum.WalkSpeed = speedValue
+      end
+   end,
+})
+
+PlayerTab:CreateSlider({
+   Name = "WalkSpeed Value",
+   Range = {16, 300},
+   Increment = 1,
+   Suffix = " Speed",
+   CurrentValue = 16,
+   Callback = function(Value)
+      speedValue = Value
+      if _G.SpeedEnabled then
+         game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+      end
+   end,
+})
+
+-- Jump Power s On/Off
+local jumpValue = 50
+PlayerTab:CreateToggle({
+   Name = "Enable Custom Jump",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.JumpEnabled = Value
+      local hum = game.Players.LocalPlayer.Character.Humanoid
+      if not Value then
+         hum.JumpPower = 50
+         hum.UseJumpPower = true
+      else
+         hum.JumpPower = jumpValue
+         hum.UseJumpPower = true
+      end
+   end,
+})
+
+PlayerTab:CreateSlider({
+   Name = "JumpPower Value",
+   Range = {50, 500},
+   Increment = 1,
+   Suffix = " Power",
+   CurrentValue = 50,
+   Callback = function(Value)
+      jumpValue = Value
+      if _G.JumpEnabled then
+         game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
+      end
+   end,
+})
+
+-- Noclip
+PlayerTab:CreateToggle({
+   Name = "Noclip",
+   CurrentValue = false,
+   Callback = function(state)
+       _G.noclip = state
+       game:GetService("RunService").Stepped:Connect(function()
+           if _G.noclip then
+               for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+                   if v:IsA("BasePart") then v.CanCollide = false end
+               end
+           end
+       end)
+   end,
+})
+
+-- Fly (Mobile Friendly)
+PlayerTab:CreateButton({
+   Name = "Load Mobile Fly (Joystick Support)",
+   Callback = function()
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.lua"))()
+   end,
+})
+
+-- Invisible
+PlayerTab:CreateButton({
+   Name = "Invisible (Local Only)",
+   Callback = function()
+       local char = game.Players.LocalPlayer.Character
+       for _, v in pairs(char:GetDescendants()) do
+           if v:IsA("BasePart") or v:IsA("Decal") then
+               v.Transparency = 1
+           end
+       end
+       Rayfield:Notify({Title = "Player", Content = "Nyní jsi neviditelný (lokálně)!", Duration = 3})
+   end,
+})
+
+-- --- KATEGORIE: FUN ---
+local FunTab = Window:CreateTab("Fun", 4483362458)
+
+FunTab:CreateButton({
+   Name = "Fling All (Experimental)",
+   Callback = function()
+       local lp = game.Players.LocalPlayer
+       local char = lp.Character
+       local hrp = char.HumanoidRootPart
+       
+       for _, v in pairs(game.Players:GetPlayers()) do
+           if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+               hrp.CFrame = v.Character.HumanoidRootPart.CFrame
+               local bodyVel = Instance.new("BodyAngularVelocity", hrp)
+               bodyVel.AngularVelocity = Vector3.new(0, 99999, 0)
+               bodyVel.MaxTorque = Vector3.new(0, 99999, 0)
+               task.wait(0.2)
+               bodyVel:Destroy()
+           end
+       end
+   end,
+})
+
+-- God Mode (Změna Humanoidu)
+PlayerTab:CreateButton({
+   Name = "Basic God Mode",
+   Callback = function()
+       local player = game.Players.LocalPlayer
+       local character = player.Character
+       if character then
+           local humanoid = character:FindFirstChildOfClass("Humanoid")
+           humanoid:BreakJointsOnDeath = false
+           humanoid.MaxHealth = math.huge
+           humanoid.Health = math.huge
+           Rayfield:Notify({Title = "God Mode", Content = "Nastaveno na nekonečno (funguje jen v některých hrách)", Duration = 3})
+       end
+   end,
+})
