@@ -1,30 +1,315 @@
-local p = game.Players.LocalPlayer
-local runService = game:GetService("RunService")
-local vu = game:GetService("VirtualUser")
+local Lib = {} -- Pomocná knihovna pro tvorbu GUI
+local activeFunctions = {} -- Sledování aktivních funkcí pro ON/OFF
 
--- ANTI-AFK (pořádně silný)
-p.Idled:Connect(function()
-    vu:CaptureController()
-    vu:ClickButton2(Vector2.new())
+-- #region --- GUI SETUP ---
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DarkByteNova"
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.Position = UDim2.new(0.5, -175, 0.4, 0)
+MainFrame.Size = UDim2.new(0, 350, 0, 300)
+MainFrame.Active = true
+MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+Instance.new("UIStroke", MainFrame).Color = Color3.fromRGB(0, 170, 255)
+Instance.new("UIStroke", MainFrame).Thickness = 1
+Instance.new("UIStroke", MainFrame).ApplyStrokeMode = Enum.UIStrokeApplyMode.Border
+
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Text = "DARK BYTE NOVA"
+Title.TextColor3 = Color3.fromRGB(0, 170, 255)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 20
+Title.TextWrapped = true
+
+local TabHolder = Instance.new("Frame")
+TabHolder.Parent = MainFrame
+TabHolder.Position = UDim2.new(0, 5, 0, 40)
+TabHolder.Size = UDim2.new(0, 90, 1, -45)
+TabHolder.BackgroundTransparency = 1
+Instance.new("UIListLayout", TabHolder).Padding = UDim.new(0, 5)
+
+local ContentHolder = Instance.new("Frame")
+ContentHolder.Parent = MainFrame
+ContentHolder.Position = UDim2.new(0, 100, 0, 40)
+ContentHolder.Size = UDim2.new(1, -105, 1, -45)
+ContentHolder.BackgroundTransparency = 1
+
+local VisualFrame = Instance.new("ScrollingFrame", ContentHolder)
+local PlayerFrame = Instance.new("ScrollingFrame", ContentHolder)
+local AntiCheatFrame = Instance.new("ScrollingFrame", ContentHolder) -- Nová kategorie
+local FlingFrame = Instance.new("ScrollingFrame", ContentHolder)
+
+for _, f in pairs({VisualFrame, PlayerFrame, AntiCheatFrame, FlingFrame}) do
+    f.Size = UDim2.new(1, 0, 1, 0)
+    f.BackgroundTransparency = 1
+    f.Visible = false
+    f.ScrollBarThickness = 0
+    Instance.new("UIListLayout", f).Padding = UDim.new(0, 5)
+    Instance.new("UIListLayout", f).FillDirection = Enum.FillDirection.Vertical
+    Instance.new("UIListLayout", f).HorizontalAlignment = Enum.HorizontalAlignment.Center
+end
+VisualFrame.Visible = true
+
+-- #endregion
+
+-- #region --- GUI COMPONENTS LIBRARY ---
+function Lib.createButton(text, parent, callback)
+    local btn = Instance.new("TextButton")
+    btn.Parent = parent
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.Text = text
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 14
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    Instance.new("UIStroke", btn).Color = Color3.fromRGB(60, 60, 60)
+    Instance.new("UIStroke", btn).Thickness = 1
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+function Lib.createToggle(name, parent, defaultState, callback)
+    local btn = Lib.createButton(name .. (defaultState and ": ON" or ": OFF"), parent, function() end)
+    local active = defaultState
+    activeFunctions[name] = active
+    local function updateText()
+        btn.Text = name .. (activeFunctions[name] and ": ON" or ": OFF")
+        btn.TextColor3 = activeFunctions[name] and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 255, 255)
+    end
+    updateText()
+    btn.MouseButton1Click:Connect(function()
+        activeFunctions[name] = not activeFunctions[name]
+        updateText()
+        callback(activeFunctions[name])
+    end)
+    return btn
+end
+
+function Lib.createSlider(name, parent, min, max, initial, step, callback)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Parent = parent
+    sliderFrame.Size = UDim2.new(1, 0, 0, 50)
+    sliderFrame.BackgroundTransparency = 1
+
+    local label = Instance.new("TextLabel", sliderFrame)
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Text = name .. ": " .. initial
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+
+    local bar = Instance.new("Frame", sliderFrame)
+    bar.Size = UDim2.new(1, 0, 0, 4)
+    bar.Position = UDim2.new(0, 0, 0, 30)
+    bar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(1,0)
+
+    local dot = Instance.new("TextButton", bar)
+    dot.Size = UDim2.new(0, 14, 0, 14)
+    local initialPos = (initial - min) / (max - min)
+    dot.Position = UDim2.new(initialPos, -7, 0.5, -7)
+    dot.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    dot.Text = ""
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    
+    local dragging = false
+    dot.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = true end end)
+    game:GetService("UserInputService").InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
+    
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if dragging then
+            local mousePos = game:GetService("UserInputService"):GetMouseLocation().X
+            local relPos = math.clamp((mousePos - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+            dot.Position = UDim2.new(relPos, -7, 0.5, -7)
+            local val = math.floor(min + (max - min) * relPos)
+            -- Zaokrouhli na nejbližší krok
+            val = math.floor(val / step) * step
+            label.Text = name .. ": " .. val
+            callback(val)
+        end
+    end)
+    callback(initial) -- Počáteční volání s defaultní hodnotou
+    return sliderFrame
+end
+-- #endregion
+
+-- #region --- CATEGORY: VISUAL ---
+Lib.createButton("Get BTools (3 Tools)", VisualFrame, function()
+    local p = game.Players.LocalPlayer.Backpack
+    Instance.new("HopperBin", p).BinType = "Delete"
+    Instance.new("HopperBin", p).BinType = "Clone"
+    Instance.new("HopperBin", p).BinType = "Move"
 end)
 
--- TURBO CLICKER
-spawn(function()
-    while true do
-        -- Místo jednoho kliknutí jich pošleme 5 najednou v jedné smyčce
-        for i = 1, 5 do
-            vu:Button1Down(Vector2.new(0, 0))
-            vu:Button1Up(Vector2.new(0, 0))
+local espObjects = {}
+Lib.createToggle("ESP All", VisualFrame, false, function(v)
+    if v then
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p ~= game.Players.LocalPlayer and p.Character then
+                local h = Instance.new("Highlight", p.Character)
+                h.FillColor = Color3.fromRGB(0, 170, 255)
+                h.OutlineColor = Color3.fromRGB(0, 255, 255)
+                h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                table.insert(espObjects, h)
+            end
         end
-        task.wait() -- Nejkratší možná pauza
+    else
+        for _, h in pairs(espObjects) do if h then h:Destroy() end end
+        espObjects = {}
     end
 end)
 
--- SKRÝVÁNÍ TABULKY 123
-runService.RenderStepped:Connect(function()
-    for _, v in pairs(p.PlayerGui:GetChildren()) do
-        if v:IsA("ScreenGui") and (v.Name:find("123") or v.Name == "Check") then
-            v.Enabled = false
+-- #endregion
+
+-- #region --- CATEGORY: PLAYER ---
+local originalSpeed = 16
+local currentSpeed = originalSpeed
+Lib.createToggle("Speed Toggle", PlayerFrame, false, function(v)
+    if v then
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = currentSpeed
+    else
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = originalSpeed
+    end
+end)
+Lib.createSlider("Speed Value", PlayerFrame, 16, 1000, originalSpeed, 1, function(v)
+    currentSpeed = v
+    if activeFunctions["Speed Toggle"] then
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v
+    end
+end)
+
+local originalJump = 50
+local currentJump = originalJump
+Lib.createToggle("Jump Toggle", PlayerFrame, false, function(v)
+    if v then
+        game.Players.LocalPlayer.Character.Humanoid.JumpPower = currentJump
+    else
+        game.Players.LocalPlayer.Character.Humanoid.JumpPower = originalJump
+    end
+end)
+Lib.createSlider("Jump Value", PlayerFrame, 50, 1000, originalJump, 1, function(v)
+    currentJump = v
+    if activeFunctions["Jump Toggle"] then
+        game.Players.LocalPlayer.Character.Humanoid.JumpPower = v
+    end
+end)
+
+local flying = false
+Lib.createToggle("Fly (Joystick)", PlayerFrame, false, function(v)
+    flying = v
+    local char = game.Players.LocalPlayer.Character
+    local root = char.HumanoidRootPart
+    if flying then
+        local bv = Instance.new("BodyVelocity", root)
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity = Vector3.new(0,0,0)
+        bv.Name = "DarkFly"
+        root.CFrame = root.CFrame + Vector3.new(0,0.5,0) -- Zvedne postavu z podlahy
+        
+        task.spawn(function()
+            while flying do
+                local dir = char.Humanoid.MoveDirection
+                local cam = workspace.CurrentCamera.CFrame
+                local moveVector = (cam.LookVector * dir.Z + cam.RightVector * dir.X) * currentSpeed -- Použije currentSpeed
+                
+                bv.Velocity = moveVector
+                if dir == Vector3.new(0,0,0) then bv.Velocity = Vector3.new(0,0,0) end
+                
+                task.wait()
+            end
+            if bv then bv:Destroy() end
+        end)
+    end
+end)
+
+local noclipActive = false
+Lib.createToggle("NoClip", PlayerFrame, false, function(v)
+    noclipActive = v
+    local char = game.Players.LocalPlayer.Character
+    if char then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = not v
+            end
         end
     end
 end)
+
+-- #endregion
+
+-- #region --- CATEGORY: ANTI-CHEAT --- (Novinka)
+Lib.createButton("Bypass Anti-AFK", AntiCheatFrame, function()
+    -- Simuluje pohyb nebo aktivitu, aby tě hra nevykopla za neaktivitu
+    local lp = game.Players.LocalPlayer
+    if lp and lp.Character and lp.Character:FindFirstChild("Humanoid") then
+        lp.Character.Humanoid.WalkSpeed = 0 -- Zabraní viditelnému pohybu
+        lp.Character.Humanoid:Move(Vector3.new(0.001, 0, 0)) -- Mikro-pohyb
+        task.wait(0.1)
+        lp.Character.Humanoid:Move(Vector3.new(-0.001, 0, 0)) -- Zpět
+        lp.Character.Humanoid.WalkSpeed = activeFunctions["Speed Toggle"] and currentSpeed or originalSpeed -- Návrat rychlosti
+        print("Anti-AFK aktivován: simulace mikro-pohybu.")
+    end
+end)
+
+-- #endregion
+
+-- #region --- CATEGORY: FLING ---
+Lib.createButton("Fling All", FlingFrame, function()
+    local lp = game.Players.LocalPlayer
+    local char = lp.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+
+    local originalPos = char.HumanoidRootPart.CFrame -- Uloží pozici
+    local flingPower = 1000 -- Síla odhození
+
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local targetRoot = p.Character.HumanoidRootPart
+            
+            -- Teleport k cíli
+            char.HumanoidRootPart.CFrame = targetRoot.CFrame * CFrame.new(0, 5, 0) -- Nad cílem
+            task.wait(0.1) -- Krátká pauza
+
+            -- Vytvoření rotační síly (roztočení)
+            local vel = Instance.new("BodyAngularVelocity", char.HumanoidRootPart)
+            vel.AngularVelocity = Vector3.new(0, 9999, 0) -- Rychlé točení
+            vel.MaxTorque = Vector3.new(0, math.huge, 0)
+            
+            -- Aplikace síly na cíl
+            local force = Instance.new("BodyVelocity", targetRoot)
+            force.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            force.Velocity = (targetRoot.Position - char.HumanoidRootPart.Position).Unit * flingPower + Vector3.new(0, flingPower/2, 0) -- Odhodí nahoru a pryč
+            
+            task.wait(0.5) -- Odhodí a čeká
+
+            vel:Destroy()
+            force:Destroy()
+        end
+    end
+    char.HumanoidRootPart.CFrame = originalPos -- Návrat na původní pozici
+end)
+
+-- #endregion
+
+-- #region --- TAB SWITCHING ---
+local function showTab(tabFrame)
+    for _, f in pairs({VisualFrame, PlayerFrame, AntiCheatFrame, FlingFrame}) do
+        f.Visible = (f == tabFrame)
+    end
+end
+
+Lib.createButton("Visual", TabHolder, function() showTab(VisualFrame) end)
+Lib.createButton("Player", TabHolder, function() showTab(PlayerFrame) end)
+Lib.createButton("Anti-Cheat", TabHolder, function() showTab(AntiCheatFrame) end) -- Nová tabulka
+Lib.createButton("Fling", TabHolder, function() showTab(FlingFrame) end)
+-- #endregion
