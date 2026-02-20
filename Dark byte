@@ -1,185 +1,150 @@
---[[
-    Delta Visuals & Player Hub
-    Category: Visual, Player, Fun
-    Optimized for: Delta Executor (Mobile/PC)
-]]
+-- Získání hráče
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local camera = game.Workspace.CurrentCamera
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- GUI část
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player.PlayerGui
+screenGui.ResetOnSpawn = false
 
-local Window = Rayfield:CreateWindow({
-   Name = "Delta Hub | Open Source Edition",
-   LoadingTitle = "Načítání GitHub Scriptu...",
-   LoadingSubtitle = "by YourName",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "DeltaHub_Configs",
-      FileName = "MainConfig"
-   }
-})
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 300, 0, 400)
+mainFrame.Position = UDim2.new(0, 10, 0, 10)
+mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mainFrame.BackgroundTransparency = 0.5
+mainFrame.Parent = screenGui
 
--- --- KATEGORIE: VISUAL ---
-local VisualTab = Window:CreateTab("Visuals", 4483362458)
+local categoryButton = Instance.new("TextButton")
+categoryButton.Size = UDim2.new(0, 200, 0, 50)
+categoryButton.Position = UDim2.new(0, 50, 0, 10)
+categoryButton.Text = "Player"
+categoryButton.Parent = mainFrame
 
-VisualTab:CreateButton({
-   Name = "ESP All (Highlights)",
-   Callback = function()
-       local function ApplyESP(v)
-           if v ~= game.Players.LocalPlayer and v.Character then
-               local highlight = Instance.new("Highlight")
-               highlight.Parent = v.Character
-               highlight.FillColor = Color3.fromRGB(255, 0, 0)
-               highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-               highlight.FillTransparency = 0.5
-           end
-       end
-       
-       for _, player in pairs(game.Players:GetPlayers()) do
-           ApplyESP(player)
-       end
-       
-       game.Players.PlayerAdded:Connect(ApplyESP)
-       Rayfield:Notify({Title = "Visuals", Content = "ESP Aktivováno", Duration = 3})
-   end,
-})
+local playerCategory = Instance.new("Frame")
+playerCategory.Size = UDim2.new(0, 250, 0, 200)
+playerCategory.Position = UDim2.new(0, 10, 0, 70)
+playerCategory.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+playerCategory.BackgroundTransparency = 0.5
+playerCategory.Visible = false
+playerCategory.Parent = mainFrame
 
--- --- KATEGORIE: PLAYER ---
-local PlayerTab = Window:CreateTab("Player", 4483345998)
+-- Speed (Slider)
+local speedSlider = Instance.new("Slider")
+speedSlider.Size = UDim2.new(0, 200, 0, 20)
+speedSlider.Position = UDim2.new(0, 10, 0, 10)
+speedSlider.MaxValue = 1000
+speedSlider.MinValue = 1
+speedSlider.Value = humanoid.WalkSpeed
+speedSlider.Parent = playerCategory
 
--- Speed Changer s On/Off
-local speedValue = 16
-PlayerTab:CreateToggle({
-   Name = "Enable Custom Speed",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.SpeedEnabled = Value
-      local hum = game.Players.LocalPlayer.Character.Humanoid
-      if not Value then
-         hum.WalkSpeed = 16
-      else
-         hum.WalkSpeed = speedValue
-      end
-   end,
-})
+local speedButton = Instance.new("TextButton")
+speedButton.Size = UDim2.new(0, 100, 0, 50)
+speedButton.Position = UDim2.new(0, 10, 0, 40)
+speedButton.Text = "Toggle Speed"
+speedButton.Parent = playerCategory
 
-PlayerTab:CreateSlider({
-   Name = "WalkSpeed Value",
-   Range = {16, 300},
-   Increment = 1,
-   Suffix = " Speed",
-   CurrentValue = 16,
-   Callback = function(Value)
-      speedValue = Value
-      if _G.SpeedEnabled then
-         game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
-      end
-   end,
-})
+-- Power Jump
+local powerJumpButton = Instance.new("TextButton")
+powerJumpButton.Size = UDim2.new(0, 100, 0, 50)
+powerJumpButton.Position = UDim2.new(0, 120, 0, 40)
+powerJumpButton.Text = "Toggle Jump Power"
+powerJumpButton.Parent = playerCategory
 
--- Jump Power s On/Off
-local jumpValue = 50
-PlayerTab:CreateToggle({
-   Name = "Enable Custom Jump",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.JumpEnabled = Value
-      local hum = game.Players.LocalPlayer.Character.Humanoid
-      if not Value then
-         hum.JumpPower = 50
-         hum.UseJumpPower = true
-      else
-         hum.JumpPower = jumpValue
-         hum.UseJumpPower = true
-      end
-   end,
-})
+-- Fly
+local flyButton = Instance.new("TextButton")
+flyButton.Size = UDim2.new(0, 100, 0, 50)
+flyButton.Position = UDim2.new(0, 10, 0, 100)
+flyButton.Text = "Toggle Fly"
+flyButton.Parent = playerCategory
 
-PlayerTab:CreateSlider({
-   Name = "JumpPower Value",
-   Range = {50, 500},
-   Increment = 1,
-   Suffix = " Power",
-   CurrentValue = 50,
-   Callback = function(Value)
-      jumpValue = Value
-      if _G.JumpEnabled then
-         game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
-      end
-   end,
-})
+-- NoClip
+local noclipButton = Instance.new("TextButton")
+noclipButton.Size = UDim2.new(0, 100, 0, 50)
+noclipButton.Position = UDim2.new(0, 120, 0, 100)
+noclipButton.Text = "Toggle NoClip"
+noclipButton.Parent = playerCategory
 
--- Noclip
-PlayerTab:CreateToggle({
-   Name = "Noclip",
-   CurrentValue = false,
-   Callback = function(state)
-       _G.noclip = state
-       game:GetService("RunService").Stepped:Connect(function()
-           if _G.noclip then
-               for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
-                   if v:IsA("BasePart") then v.CanCollide = false end
-               end
-           end
-       end)
-   end,
-})
+-- Funkce pro Player kategorie
+local flying = false
+local noclipEnabled = false
+local speedEnabled = false
+local jumping = false
 
--- Fly (Mobile Friendly)
-PlayerTab:CreateButton({
-   Name = "Load Mobile Fly (Joystick Support)",
-   Callback = function()
-       loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.lua"))()
-   end,
-})
+-- Speed
+speedSlider.Changed:Connect(function()
+    if speedEnabled then
+        humanoid.WalkSpeed = speedSlider.Value
+    end
+end)
 
--- Invisible
-PlayerTab:CreateButton({
-   Name = "Invisible (Local Only)",
-   Callback = function()
-       local char = game.Players.LocalPlayer.Character
-       for _, v in pairs(char:GetDescendants()) do
-           if v:IsA("BasePart") or v:IsA("Decal") then
-               v.Transparency = 1
-           end
-       end
-       Rayfield:Notify({Title = "Player", Content = "Nyní jsi neviditelný (lokálně)!", Duration = 3})
-   end,
-})
+speedButton.MouseButton1Click:Connect(function()
+    speedEnabled = not speedEnabled
+    if speedEnabled then
+        humanoid.WalkSpeed = speedSlider.Value
+    else
+        humanoid.WalkSpeed = 16 -- default speed
+    end
+end)
 
--- --- KATEGORIE: FUN ---
-local FunTab = Window:CreateTab("Fun", 4483362458)
+-- Power Jump
+powerJumpButton.MouseButton1Click:Connect(function()
+    jumping = not jumping
+    if jumping then
+        humanoid.JumpHeight = 100 -- nastaví výšku skoku na 100
+    else
+        humanoid.JumpHeight = 50 -- standardní výška skoku
+    end
+end)
 
-FunTab:CreateButton({
-   Name = "Fling All (Experimental)",
-   Callback = function()
-       local lp = game.Players.LocalPlayer
-       local char = lp.Character
-       local hrp = char.HumanoidRootPart
-       
-       for _, v in pairs(game.Players:GetPlayers()) do
-           if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-               hrp.CFrame = v.Character.HumanoidRootPart.CFrame
-               local bodyVel = Instance.new("BodyAngularVelocity", hrp)
-               bodyVel.AngularVelocity = Vector3.new(0, 99999, 0)
-               bodyVel.MaxTorque = Vector3.new(0, 99999, 0)
-               task.wait(0.2)
-               bodyVel:Destroy()
-           end
-       end
-   end,
-})
+-- Fly
+flyButton.MouseButton1Click:Connect(function()
+    flying = not flying
+    if flying then
+        -- Aktivace létání
+        local bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+        bodyVelocity.Velocity = Vector3.new(0, 50, 0)
+        bodyVelocity.Parent = character:WaitForChild("HumanoidRootPart")
+        -- Použití tlačítek pro pohyb na mobilu
+        local touchZoneUp = Instance.new("TextButton")
+        touchZoneUp.Size = UDim2.new(0, 50, 0, 50)
+        touchZoneUp.Position = UDim2.new(0, 10, 0, 150)
+        touchZoneUp.Text = "Up"
+        touchZoneUp.Parent = player.PlayerGui
+        touchZoneUp.MouseButton1Click:Connect(function()
+            bodyVelocity.Velocity = Vector3.new(0, 50, 0) -- pohyb nahoru
+        end)
+        
+        local touchZoneDown = Instance.new("TextButton")
+        touchZoneDown.Size = UDim2.new(0, 50, 0, 50)
+        touchZoneDown.Position = UDim2.new(0, 10, 0, 210)
+        touchZoneDown.Text = "Down"
+        touchZoneDown.Parent = player.PlayerGui
+        touchZoneDown.MouseButton1Click:Connect(function()
+            bodyVelocity.Velocity = Vector3.new(0, -50, 0) -- pohyb dolů
+        end)
+    else
+        -- Zastavení létání
+        character:WaitForChild("HumanoidRootPart"):FindFirstChildOfClass("BodyVelocity"):Destroy()
+    end
+end)
 
--- God Mode (Změna Humanoidu)
-PlayerTab:CreateButton({
-   Name = "Basic God Mode",
-   Callback = function()
-       local player = game.Players.LocalPlayer
-       local character = player.Character
-       if character then
-           local humanoid = character:FindFirstChildOfClass("Humanoid")
-           humanoid:BreakJointsOnDeath = false
-           humanoid.MaxHealth = math.huge
-           humanoid.Health = math.huge
-           Rayfield:Notify({Title = "God Mode", Content = "Nastaveno na nekonečno (funguje jen v některých hrách)", Duration = 3})
-       end
-   end,
-})
+-- NoClip
+noclipButton.MouseButton1Click:Connect(function()
+    noclipEnabled = not noclipEnabled
+    if noclipEnabled then
+        -- Povolení NoClip
+        humanoid.PlatformStand = true
+        character:WaitForChild("HumanoidRootPart").CanCollide = false
+    else
+        -- Vypnutí NoClip
+        humanoid.PlatformStand = false
+        character:WaitForChild("HumanoidRootPart").CanCollide = true
+    end
+end)
+
+categoryButton.MouseButton1Click:Connect(function()
+    playerCategory.Visible = not playerCategory.Visible
+end)
