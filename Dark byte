@@ -1,8 +1,8 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "💎 Luxury Menu | Toggle Edition",
-   LoadingTitle = "Načítání funkcí...",
+   Name = "💎 Luxury Menu | FIXED",
+   LoadingTitle = "Oprava chyb...",
    LoadingSubtitle = "by Gemini AI",
    ConfigurationSaving = { Enabled = false }
 })
@@ -36,59 +36,63 @@ VisualTab:CreateToggle({
 -- KATEGORIE: PLAYER
 local PlayerTab = Window:CreateTab("Player", 4483362458)
 
--- GOD MODE ON/OFF
+-- OPRAVENÝ GOD MODE (Změna stavu Humanoida)
 PlayerTab:CreateToggle({
    Name = "God Mode (Nesmrtelnost)",
    CurrentValue = false,
    Callback = function(v)
       if v then
-         lp.Character.Humanoid.MaxHealth = 999999
-         lp.Character.Humanoid.Health = 999999
+         lp.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+         lp.Character.Humanoid.MaxHealth = 1000000
+         lp.Character.Humanoid.Health = 1000000
       else
+         lp.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
          lp.Character.Humanoid.MaxHealth = 100
          lp.Character.Humanoid.Health = 100
       end
    end,
 })
 
--- SPEED ON/OFF
 PlayerTab:CreateSlider({
-   Name = "Nastavení Rychlosti", Range = {16, 300}, Increment = 1, CurrentValue = 16,
+   Name = "Rychlost", Range = {16, 300}, Increment = 1, CurrentValue = 16,
    Callback = function(v) ws_val = v end,
 })
 PlayerTab:CreateToggle({
-   Name = "Zapnout Rychlost (ON/OFF)", CurrentValue = false,
-   Callback = function(v) 
-      lp.Character.Humanoid.WalkSpeed = v and ws_val or 16 
-   end,
+   Name = "Zapnout Rychlost", CurrentValue = false,
+   Callback = function(v) lp.Character.Humanoid.WalkSpeed = v and ws_val or 16 end,
 })
 
--- JUMP ON/OFF
-PlayerTab:CreateSlider({
-   Name = "Nastavení Skoku", Range = {50, 500}, Increment = 1, CurrentValue = 50,
-   Callback = function(v) jp_val = v end,
-})
-PlayerTab:CreateToggle({
-   Name = "Zapnout Skok (ON/OFF)", CurrentValue = false,
-   Callback = function(v) 
-      lp.Character.Humanoid.UseJumpPower = true
-      lp.Character.Humanoid.JumpPower = v and jp_val or 50 
-   end,
-})
-
--- FLY ON/OFF
+-- OPRAVENÝ FLY PRO MOBILE (Používá BodyVelocity)
 PlayerTab:CreateSlider({
    Name = "Fly Speed", Range = {10, 300}, Increment = 1, CurrentValue = 50,
    Callback = function(v) fly_val = v end,
 })
 PlayerTab:CreateToggle({
-   Name = "Fly (Létání ON/OFF)", CurrentValue = false,
-   Callback = function(v) flying = v end,
+   Name = "Fly (Létání)", CurrentValue = false,
+   Callback = function(v)
+      flying = v
+      local char = lp.Character
+      if flying then
+         local bv = Instance.new("BodyVelocity", char.HumanoidRootPart)
+         bv.Name = "FlyVelocity"
+         bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+         bv.Velocity = Vector3.new(0, 0, 0)
+         
+         task.spawn(function()
+            while flying do
+               bv.Velocity = char.Humanoid.MoveDirection * fly_val + Vector3.new(0, 0.1, 0)
+               task.wait()
+            end
+            if char.HumanoidRootPart:FindFirstChild("FlyVelocity") then
+               char.HumanoidRootPart.FlyVelocity:Destroy()
+            end
+         end)
+      end
+   end,
 })
 
--- NOCLIP ON/OFF
 PlayerTab:CreateToggle({
-   Name = "Noclip (Zdi ON/OFF)", CurrentValue = false,
+   Name = "Noclip (Zdi)", CurrentValue = false,
    Callback = function(v)
       noclip = v
       game:GetService("RunService").Stepped:Connect(function()
@@ -106,7 +110,6 @@ local FunTab = Window:CreateTab("Fun & Audio", 4483362458)
 local sfx = Instance.new("Sound", game.Workspace)
 local function playS(id) sfx:Stop() sfx.SoundId = "rbxassetid://"..id sfx.Volume = 2 sfx:Play() end
 
-FunTab:CreateSection("Tvoje vybrané songy")
 FunTab:CreateButton({ Name = "STOP HUDBA", Callback = function() sfx:Stop() end })
 FunTab:CreateButton({ Name = "Song 1", Callback = function() playS("1051939103") end })
 FunTab:CreateButton({ Name = "Song 2", Callback = function() playS("881678229") end })
@@ -116,24 +119,18 @@ FunTab:CreateButton({ Name = "Song 5", Callback = function() playS("9119619134")
 FunTab:CreateButton({ Name = "Song 6", Callback = function() playS("9118182767") end })
 FunTab:CreateButton({ Name = "Song 7", Callback = function() playS("9120760361") end })
 
-FunTab:CreateSection("Trollování")
-FunTab:CreateToggle({
-   Name = "Fling All (ON/OFF Loop)",
-   CurrentValue = false,
-   Callback = function(v)
-      _G.FlingAll = v
-      while _G.FlingAll do
-         local r = Instance.new("BodyAngularVelocity", lp.Character.HumanoidRootPart)
-         r.AngularVelocity = Vector3.new(0, 99999, 0)
-         r.MaxTorque = Vector3.new(0, 99999, 0)
-         for _, t in pairs(game.Players:GetPlayers()) do
-            if t ~= lp and t.Character and _G.FlingAll then
-               lp.Character.HumanoidRootPart.CFrame = t.Character.HumanoidRootPart.CFrame
-               task.wait(0.2)
-            end
+FunTab:CreateButton({
+   Name = "Fling All",
+   Callback = function()
+      local r = Instance.new("BodyAngularVelocity", lp.Character.HumanoidRootPart)
+      r.AngularVelocity = Vector3.new(0, 99999, 0)
+      r.MaxTorque = Vector3.new(0, 99999, 0)
+      for _, t in pairs(game.Players:GetPlayers()) do
+         if t ~= lp and t.Character then
+            lp.Character.HumanoidRootPart.CFrame = t.Character.HumanoidRootPart.CFrame
+            task.wait(0.2)
          end
-         r:Destroy()
-         task.wait(1)
       end
+      r:Destroy()
    end,
 })
