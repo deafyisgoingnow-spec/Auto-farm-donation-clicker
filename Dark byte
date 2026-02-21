@@ -1,150 +1,134 @@
--- Získání hráče
-local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local camera = game.Workspace.CurrentCamera
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- GUI část
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = player.PlayerGui
-screenGui.ResetOnSpawn = false
+local Window = Rayfield:CreateWindow({
+   Name = "💎 Luxury Menu | Delta Executor",
+   LoadingTitle = "Načítání systému...",
+   LoadingSubtitle = "by Gemini AI",
+   ConfigurationSaving = { Enabled = false }
+})
 
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 400)
-mainFrame.Position = UDim2.new(0, 10, 0, 10)
-mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-mainFrame.BackgroundTransparency = 0.5
-mainFrame.Parent = screenGui
-
-local categoryButton = Instance.new("TextButton")
-categoryButton.Size = UDim2.new(0, 200, 0, 50)
-categoryButton.Position = UDim2.new(0, 50, 0, 10)
-categoryButton.Text = "Player"
-categoryButton.Parent = mainFrame
-
-local playerCategory = Instance.new("Frame")
-playerCategory.Size = UDim2.new(0, 250, 0, 200)
-playerCategory.Position = UDim2.new(0, 10, 0, 70)
-playerCategory.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-playerCategory.BackgroundTransparency = 0.5
-playerCategory.Visible = false
-playerCategory.Parent = mainFrame
-
--- Speed (Slider)
-local speedSlider = Instance.new("Slider")
-speedSlider.Size = UDim2.new(0, 200, 0, 20)
-speedSlider.Position = UDim2.new(0, 10, 0, 10)
-speedSlider.MaxValue = 1000
-speedSlider.MinValue = 1
-speedSlider.Value = humanoid.WalkSpeed
-speedSlider.Parent = playerCategory
-
-local speedButton = Instance.new("TextButton")
-speedButton.Size = UDim2.new(0, 100, 0, 50)
-speedButton.Position = UDim2.new(0, 10, 0, 40)
-speedButton.Text = "Toggle Speed"
-speedButton.Parent = playerCategory
-
--- Power Jump
-local powerJumpButton = Instance.new("TextButton")
-powerJumpButton.Size = UDim2.new(0, 100, 0, 50)
-powerJumpButton.Position = UDim2.new(0, 120, 0, 40)
-powerJumpButton.Text = "Toggle Jump Power"
-powerJumpButton.Parent = playerCategory
-
--- Fly
-local flyButton = Instance.new("TextButton")
-flyButton.Size = UDim2.new(0, 100, 0, 50)
-flyButton.Position = UDim2.new(0, 10, 0, 100)
-flyButton.Text = "Toggle Fly"
-flyButton.Parent = playerCategory
-
--- NoClip
-local noclipButton = Instance.new("TextButton")
-noclipButton.Size = UDim2.new(0, 100, 0, 50)
-noclipButton.Position = UDim2.new(0, 120, 0, 100)
-noclipButton.Text = "Toggle NoClip"
-noclipButton.Parent = playerCategory
-
--- Funkce pro Player kategorie
+-- PROMĚNNÉ
+local lp = game.Players.LocalPlayer
+local char = lp.Character or lp.CharacterAdded:Wait()
+local ws_val = 16
+local jp_val = 50
+local fly_speed = 50
 local flying = false
-local noclipEnabled = false
-local speedEnabled = false
-local jumping = false
+local noclip = false
 
--- Speed
-speedSlider.Changed:Connect(function()
-    if speedEnabled then
-        humanoid.WalkSpeed = speedSlider.Value
-    end
-end)
+-- KATEGORIE: VISUAL
+local VisualTab = Window:CreateTab("Visual", 4483362458)
 
-speedButton.MouseButton1Click:Connect(function()
-    speedEnabled = not speedEnabled
-    if speedEnabled then
-        humanoid.WalkSpeed = speedSlider.Value
-    else
-        humanoid.WalkSpeed = 16 -- default speed
-    end
-end)
+local ESP_Folder = Instance.new("Folder", game.CoreGui)
+VisualTab:CreateToggle({
+   Name = "ESP All (Highlights)",
+   CurrentValue = false,
+   Callback = function(Value)
+      if Value then
+         for _, v in pairs(game.Players:GetPlayers()) do
+            if v ~= lp and v.Character then
+               local highlight = Instance.new("Highlight", ESP_Folder)
+               highlight.Adornee = v.Character
+               highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            end
+         end
+      else
+         ESP_Folder:ClearAllChildren()
+      end
+   end,
+})
 
--- Power Jump
-powerJumpButton.MouseButton1Click:Connect(function()
-    jumping = not jumping
-    if jumping then
-        humanoid.JumpHeight = 100 -- nastaví výšku skoku na 100
-    else
-        humanoid.JumpHeight = 50 -- standardní výška skoku
-    end
-end)
+-- KATEGORIE: PLAYER
+local PlayerTab = Window:CreateTab("Player", 4483362458)
 
--- Fly
-flyButton.MouseButton1Click:Connect(function()
-    flying = not flying
-    if flying then
-        -- Aktivace létání
-        local bodyVelocity = Instance.new("BodyVelocity")
-        bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
-        bodyVelocity.Velocity = Vector3.new(0, 50, 0)
-        bodyVelocity.Parent = character:WaitForChild("HumanoidRootPart")
-        -- Použití tlačítek pro pohyb na mobilu
-        local touchZoneUp = Instance.new("TextButton")
-        touchZoneUp.Size = UDim2.new(0, 50, 0, 50)
-        touchZoneUp.Position = UDim2.new(0, 10, 0, 150)
-        touchZoneUp.Text = "Up"
-        touchZoneUp.Parent = player.PlayerGui
-        touchZoneUp.MouseButton1Click:Connect(function()
-            bodyVelocity.Velocity = Vector3.new(0, 50, 0) -- pohyb nahoru
-        end)
-        
-        local touchZoneDown = Instance.new("TextButton")
-        touchZoneDown.Size = UDim2.new(0, 50, 0, 50)
-        touchZoneDown.Position = UDim2.new(0, 10, 0, 210)
-        touchZoneDown.Text = "Down"
-        touchZoneDown.Parent = player.PlayerGui
-        touchZoneDown.MouseButton1Click:Connect(function()
-            bodyVelocity.Velocity = Vector3.new(0, -50, 0) -- pohyb dolů
-        end)
-    else
-        -- Zastavení létání
-        character:WaitForChild("HumanoidRootPart"):FindFirstChildOfClass("BodyVelocity"):Destroy()
-    end
-end)
+PlayerTab:CreateSlider({
+   Name = "WalkSpeed Value",
+   Range = {16, 300},
+   Increment = 1,
+   CurrentValue = 16,
+   Callback = function(Value) ws_val = Value end,
+})
 
--- NoClip
-noclipButton.MouseButton1Click:Connect(function()
-    noclipEnabled = not noclipEnabled
-    if noclipEnabled then
-        -- Povolení NoClip
-        humanoid.PlatformStand = true
-        character:WaitForChild("HumanoidRootPart").CanCollide = false
-    else
-        -- Vypnutí NoClip
-        humanoid.PlatformStand = false
-        character:WaitForChild("HumanoidRootPart").CanCollide = true
-    end
-end)
+PlayerTab:CreateToggle({
+   Name = "Enable Speed",
+   CurrentValue = false,
+   Callback = function(Value)
+      lp.Character.Humanoid.WalkSpeed = Value and ws_val or 16
+   end,
+})
 
-categoryButton.MouseButton1Click:Connect(function()
-    playerCategory.Visible = not playerCategory.Visible
-end)
+PlayerTab:CreateSlider({
+   Name = "JumpPower Value",
+   Range = {50, 500},
+   Increment = 1,
+   CurrentValue = 50,
+   Callback = function(Value) jp_val = Value end,
+})
+
+PlayerTab:CreateToggle({
+   Name = "Enable Jump",
+   CurrentValue = false,
+   Callback = function(Value)
+      lp.Character.Humanoid.UseJumpPower = true
+      lp.Character.Humanoid.JumpPower = Value and jp_val or 50
+   end,
+})
+
+PlayerTab:CreateToggle({
+   Name = "Noclip",
+   CurrentValue = false,
+   Callback = function(Value)
+      noclip = Value
+      game:GetService("RunService").Stepped:Connect(function()
+         if noclip then
+            for _, part in pairs(lp.Character:GetDescendants()) do
+               if part:IsA("BasePart") then part.CanCollide = false end
+            end
+         end
+      end)
+   end,
+})
+
+PlayerTab:CreateButton({
+   Name = "Invisible (Local)",
+   Callback = function()
+      for _, part in pairs(lp.Character:GetDescendants()) do
+         if part:IsA("BasePart") or part:IsA("Decal") then part.Transparency = 1 end
+      end
+   end,
+})
+
+-- KATEGORIE: FUN & SOUNDS
+local FunTab = Window:CreateTab("Fun & Audio", 4483362458)
+
+-- POZNÁMKA K AUDIU: V Robloxu nyní slyší hudbu ostatní jen pokud máš "Radio" gamepass v dané hře.
+local currentSound = Instance.new("Sound", game.Workspace)
+local function playSfx(id)
+   currentSound:Stop()
+   currentSound.SoundId = "rbxassetid://"..id
+   currentSound.Volume = 2
+   currentSound:Play()
+end
+
+FunTab:CreateButton({ Name = "Stop Music", Callback = function() currentSound:Stop() end })
+FunTab:CreateSection("Doors Sounds")
+FunTab:CreateButton({ Name = "Rush", Callback = function() playSfx("9114223126") end })
+FunTab:CreateButton({ Name = "Ambush", Callback = function() playSfx("9119853315") end })
+FunTab:CreateButton({ Name = "Elevator Music", Callback = function() playSfx("9118025211") end })
+
+FunTab:CreateSection("Combat")
+FunTab:CreateButton({
+   Name = "Fling All",
+   Callback = function()
+      local bam = Instance.new("BodyAngularVelocity", lp.Character.HumanoidRootPart)
+      bam.AngularVelocity = Vector3.new(0, 99999, 0)
+      bam.MaxTorque = Vector3.new(0, 99999, 0)
+      for _, v in pairs(game.Players:GetPlayers()) do
+         if v ~= lp and v.Character then
+            lp.Character.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame
+            task.wait(0.1)
+         end
+      end
+      bam:Destroy()
+   end,
+})
