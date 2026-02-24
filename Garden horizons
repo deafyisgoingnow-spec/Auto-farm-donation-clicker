@@ -1,11 +1,22 @@
+-- Načtení knihovny Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+-- Vytvoření okna
 local Window = Rayfield:CreateWindow({
-   Name = "Garden Horizons | Ultra Auto Buy",
-   LoadingTitle = "Příprava na nákupy...",
+   Name = "Garden Horizons | Auto Buy & Anti-AFK",
+   LoadingTitle = "Příprava systému...",
    ConfigurationSaving = { Enabled = false }
 })
 
+-- ANTI-AFK SYSTÉM (Běží hned po startu)
+local VirtualUser = game:GetService("VirtualUser")
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+    print("Anti-AFK: Zabráněno odpojení!")
+end)
+
+-- Nastavení pro přepínače
 local settings = {
     Seeds = {
         ["Mushroom Seed"] = false, ["Beetroot Seed"] = false, ["Tomato Seed"] = false,
@@ -19,23 +30,16 @@ local settings = {
     }
 }
 
--- Tato funkce prohledá hru a zkusí najít nákupní příkaz
+-- Funkce pro nákup využívající tvůj GitHub loadstring
 local function doPurchase(itemName)
-    -- Hledáme v ReplicatedStorage eventy pro nákup
-    local RS = game:GetService("ReplicatedStorage")
-    local events = {"PurchaseItem", "BuyItem", "RequestPurchase", "ShopRemote"}
-    
-    for _, eventName in pairs(events) do
-        local remote = RS:FindFirstChild(eventName, true)
-        if remote and remote:IsA("RemoteEvent") then
-            remote:FireServer(itemName)
-        end
-    end
+    -- Načte tvůj nákupní skript z GitHubu
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/deafyisgoingnow-spec/Auto-farm-donation-clicker/refs/heads/main/Garden%20horizons"))()
+    -- Poznámka: Tvůj GitHub skript musí obsahovat logiku, která zpracuje 'itemName'
 end
 
--- Smyčka pro automatické klikání na pozadí
+-- Smyčka pro automatický nákup
 spawn(function()
-    while task.wait(0.3) do
+    while task.wait(1) do
         for name, enabled in pairs(settings.Seeds) do
             if enabled then doPurchase(name) end
         end
@@ -45,22 +49,24 @@ spawn(function()
     end
 end)
 
--- TAB: SEEDY
-local TabSeeds = Window:CreateTab("Seed Shop", 4483362458)
+-- GUI Taby
+local Tab1 = Window:CreateTab("Seed Shop", 4483362458)
 for name, _ in pairs(settings.Seeds) do
-    TabSeeds:CreateToggle({
+    Tab1:CreateToggle({
         Name = "Auto Buy " .. name,
         CurrentValue = false,
         Callback = function(v) settings.Seeds[name] = v end
     })
 end
 
--- TAB: GEARY (To co jsi chtěl navíc)
-local TabGears = Window:CreateTab("Gear Shop", 4483362458)
+local Tab2 = Window:CreateTab("Gear Shop", 4483362458)
 for name, _ in pairs(settings.Gears) do
-    TabGears:CreateToggle({
+    Tab2:CreateToggle({
         Name = "Auto Buy " .. name,
         CurrentValue = false,
         Callback = function(v) settings.Gears[name] = v end
     })
 end
+
+local InfoTab = Window:CreateTab("Status", 4483362458)
+InfoTab:CreateLabel("Anti-AFK: AKTIVNÍ")
