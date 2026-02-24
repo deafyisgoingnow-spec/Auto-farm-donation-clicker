@@ -1,12 +1,13 @@
+-- Načtení Rayfield UI
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Garden Horizons | All Seeds Edition",
-   LoadingTitle = "Načítám Billovu nabídku...",
+   Name = "Garden Horizons | Full Auto Shop",
+   LoadingTitle = "Načítám všechna semínka...",
    ConfigurationSaving = { Enabled = false }
 })
 
--- ANTI-AFK
+-- ANTI-AFK (Zabrání kicku ze hry)
 local VirtualUser = game:GetService("VirtualUser")
 game:GetService("Players").LocalPlayer.Idled:Connect(function()
     VirtualUser:CaptureController()
@@ -15,28 +16,34 @@ end)
 
 local settings = { Items = {} }
 
-local function buy(name)
-    _G.TargetItem = name
-    pcall(function()
+-- FUNKCE PRO TVŮJ GITHUB LOADSTRING
+local function executeGithubScript(itemName)
+    _G.TargetItem = itemName
+    -- pcall zabrání zamrznutí GUI při chybě v načítání
+    local success, err = pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/deafyisgoingnow-spec/Auto-farm-donation-clicker/refs/heads/main/Garden%20horizons"))()
     end)
+    if not success then warn("Chyba loadstringu: " .. err) end
 end
 
+-- Hlavní smyčka nákupu
 spawn(function()
-    while task.wait(0.5) do
+    while task.wait(0.7) do
         for name, enabled in pairs(settings.Items) do
-            if enabled then buy(name) end
+            if enabled then executeGithubScript(name) end
         end
     end
 end)
 
--- SEED SHOP (Vše co jsme ve videích našli)
+--- TABULKY S POLOŽKAMI ---
+
+-- SEED SHOP (Všechny rostliny z tvých videí)
 local SeedTab = Window:CreateTab("Seed Shop", 4483362458)
 local allSeeds = {
     "Corn Seed", "Onion Seed", "Strawberry Seed", "Mushroom Seed", 
     "Beetroot Seed", "Tomato Seed", "Apple Seed", "Rose Seed", 
     "Wheat Seed", "Banana Seed", "Plum Seed", "Potato Seed", 
-    "Cabbage Seed", "Cherry Seed", "Carrot Seed", "Goldenberry Seed"
+    "Cabbage Seed", "Cherry Seed", "Carrot Seed"
 }
 
 for _, name in pairs(allSeeds) do
@@ -48,7 +55,7 @@ for _, name in pairs(allSeeds) do
     })
 end
 
--- GEAR SHOP (Molly's Gear Shop)
+-- GEAR SHOP (Vše z Molly's shopu)
 local GearTab = Window:CreateTab("Gear Shop", 4483362458)
 local allGears = {
     "Watering Can", "Basic Sprinkler", "Harvest Bell", 
@@ -63,3 +70,5 @@ for _, name in pairs(allGears) do
        Callback = function(v) settings.Items[name] = v end,
     })
 end
+
+Rayfield:LoadConfiguration()
