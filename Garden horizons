@@ -1,72 +1,65 @@
--- Načtení knihovny Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Vytvoření okna
 local Window = Rayfield:CreateWindow({
-   Name = "Garden Horizons | Auto Buy & Anti-AFK",
-   LoadingTitle = "Příprava systému...",
+   Name = "Garden Horizons | All Seeds Edition",
+   LoadingTitle = "Načítám Billovu nabídku...",
    ConfigurationSaving = { Enabled = false }
 })
 
--- ANTI-AFK SYSTÉM (Běží hned po startu)
+-- ANTI-AFK
 local VirtualUser = game:GetService("VirtualUser")
 game:GetService("Players").LocalPlayer.Idled:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
-    print("Anti-AFK: Zabráněno odpojení!")
 end)
 
--- Nastavení pro přepínače
-local settings = {
-    Seeds = {
-        ["Mushroom Seed"] = false, ["Beetroot Seed"] = false, ["Tomato Seed"] = false,
-        ["Apple Seed"] = false, ["Rose Seed"] = false, ["Wheat Seed"] = false,
-        ["Banana Seed"] = false, ["Plum Seed"] = false, ["Potato Seed"] = false,
-        ["Cabbage Seed"] = false, ["Cherry Seed"] = false
-    },
-    Gears = {
-        ["Watering Can"] = false, ["Basic Sprinkler"] = false, ["Harvest Bell"] = false,
-        ["Turbo Sprinkler"] = false, ["Favorite Tool"] = false, ["Super Sprinkler"] = false
-    }
-}
+local settings = { Items = {} }
 
--- Funkce pro nákup využívající tvůj GitHub loadstring
-local function doPurchase(itemName)
-    -- Načte tvůj nákupní skript z GitHubu
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/deafyisgoingnow-spec/Auto-farm-donation-clicker/refs/heads/main/Garden%20horizons"))()
-    -- Poznámka: Tvůj GitHub skript musí obsahovat logiku, která zpracuje 'itemName'
+local function buy(name)
+    _G.TargetItem = name
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/deafyisgoingnow-spec/Auto-farm-donation-clicker/refs/heads/main/Garden%20horizons"))()
+    end)
 end
 
--- Smyčka pro automatický nákup
 spawn(function()
-    while task.wait(1) do
-        for name, enabled in pairs(settings.Seeds) do
-            if enabled then doPurchase(name) end
-        end
-        for name, enabled in pairs(settings.Gears) do
-            if enabled then doPurchase(name) end
+    while task.wait(0.5) do
+        for name, enabled in pairs(settings.Items) do
+            if enabled then buy(name) end
         end
     end
 end)
 
--- GUI Taby
-local Tab1 = Window:CreateTab("Seed Shop", 4483362458)
-for name, _ in pairs(settings.Seeds) do
-    Tab1:CreateToggle({
-        Name = "Auto Buy " .. name,
-        CurrentValue = false,
-        Callback = function(v) settings.Seeds[name] = v end
+-- SEED SHOP (Vše co jsme ve videích našli)
+local SeedTab = Window:CreateTab("Seed Shop", 4483362458)
+local allSeeds = {
+    "Corn Seed", "Onion Seed", "Strawberry Seed", "Mushroom Seed", 
+    "Beetroot Seed", "Tomato Seed", "Apple Seed", "Rose Seed", 
+    "Wheat Seed", "Banana Seed", "Plum Seed", "Potato Seed", 
+    "Cabbage Seed", "Cherry Seed", "Carrot Seed", "Goldenberry Seed"
+}
+
+for _, name in pairs(allSeeds) do
+    settings.Items[name] = false
+    SeedTab:CreateToggle({
+       Name = "Auto Buy " .. name,
+       CurrentValue = false,
+       Callback = function(v) settings.Items[name] = v end,
     })
 end
 
-local Tab2 = Window:CreateTab("Gear Shop", 4483362458)
-for name, _ in pairs(settings.Gears) do
-    Tab2:CreateToggle({
-        Name = "Auto Buy " .. name,
-        CurrentValue = false,
-        Callback = function(v) settings.Gears[name] = v end
+-- GEAR SHOP (Molly's Gear Shop)
+local GearTab = Window:CreateTab("Gear Shop", 4483362458)
+local allGears = {
+    "Watering Can", "Basic Sprinkler", "Harvest Bell", 
+    "Turbo Sprinkler", "Favorite Tool", "Super Sprinkler", "Shovel"
+}
+
+for _, name in pairs(allGears) do
+    settings.Items[name] = false
+    GearTab:CreateToggle({
+       Name = "Auto Buy " .. name,
+       CurrentValue = false,
+       Callback = function(v) settings.Items[name] = v end,
     })
 end
-
-local InfoTab = Window:CreateTab("Status", 4483362458)
-InfoTab:CreateLabel("Anti-AFK: AKTIVNÍ")
