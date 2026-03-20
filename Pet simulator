@@ -1,0 +1,89 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "DARK BYTE",
+   LoadingTitle = "Načítání Raid Farmy...",
+   LoadingSubtitle = "by Gemini AI",
+   ConfigurationSaving = { Enabled = false }
+})
+
+-- PROMĚNNÉ
+local lp = game.Players.LocalPlayer
+local autoRaid = false
+
+-- KONTROLA PETŮ (Reset pokud se nenačtou)
+task.spawn(function()
+    while true do
+        if autoRaid then
+            local pety = lp.PlayerGui:FindFirstChild("Inventory") -- Změň podle skutečného názvu GUI hry
+            -- Pokud hra nevidí pety v inventáři/vybavení, resetuje se
+            if not lp.Character:FindFirstChild("PetFolder") and not lp.Character:FindFirstChild("HumanoidRootPart") then
+                lp.Character.Humanoid.Health = 0
+                Rayfield:Notify({Title = "Systém", Content = "Peti nenalezeni, resetuji postavu..."})
+            end
+        end
+        task.wait(10) -- Kontrola každých 10 sekund
+    end
+end)
+
+-- KATEGORIE: EVENT
+local EventTab = Window:CreateTab("Event", 4483362458)
+
+EventTab:CreateToggle({
+   Name = "Auto Farm Raid (Level 4500)",
+   CurrentValue = false,
+   Callback = function(Value)
+      autoRaid = Value
+      
+      task.spawn(function()
+         while autoRaid do
+            pcall(function()
+               -- 1. Vstup do Raidu Level 4500
+               local currentArea = lp.Character.HumanoidRootPart.CFrame
+               -- Simulace vstupu (RemoteEvent hry pro Start Raid)
+               game:GetService("ReplicatedStorage").Network:FindFirstChild("Raid_Start"):InvokeServer("StPatrick", 4500)
+               
+               -- 2. Ničení všech truhel (Kromě Boss truhly)
+               for _, v in pairs(game.Workspace.__THINGS.Breakables:GetChildren()) do
+                   if v:FindFirstChild("Attribute") and not v.Name:find("Boss") then
+                       -- Příkaz pro pety, aby útočili na běžné truhly
+                       game:GetService("ReplicatedStorage").Network.Breakables_PlayerAttack:FireServer(v.Name)
+                   end
+               end
+               
+               -- 3. Otevírání chestek na konci (Kromě klíčové)
+               for _, chest in pairs(game.Workspace.__THINGS.LootChest:GetChildren()) do
+                   if chest:FindFirstChild("AddShield") == nil then -- Příklad filtru pro truhly bez zámku/klíče
+                       game:GetService("ReplicatedStorage").Network.LootChest_Collect:FireServer(chest.Name)
+                   end
+               end
+            end)
+            task.wait(1)
+         end
+      end)
+   end,
+})
+
+-- KATEGORIE: SETTINGS
+local SettingsTab = Window:CreateTab("Settings", 4483362458)
+
+SettingsTab:CreateButton({
+   Name = "Anti-AFK (Pro farmení přes noc)",
+   Callback = function()
+      local vu = game:GetService("VirtualUser")
+      lp.Idled:Connect(function()
+         vu:Button2Down(Vector3.new(0,0,0),workspace.CurrentCamera.CFrame)
+         task.wait(1)
+         vu:Button2Up(Vector3.new(0,0,0),workspace.CurrentCamera.CFrame)
+      end)
+      Rayfield:Notify({Title = "Success", Content = "Anti-AFK Aktivní!"})
+   end,
+})
+
+SettingsTab:CreateButton({
+   Name = "Vypnout 3D Render (FPS Boost)",
+   Callback = function()
+      game:GetService("RunService"):Set3dRenderingEnabled(false)
+      Rayfield:Notify({Title = "Optimalizace", Content = "3D Render vypnut pro úsporu baterie."})
+   end,
+})
