@@ -2,74 +2,84 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "DARK BYTE",
-   LoadingTitle = "Full Auto Raid Mode...",
-   LoadingSubtitle = "Optimalizováno pro 300M Goal",
+   LoadingTitle = "Full Automation System",
+   LoadingSubtitle = "Redmi 13C 5G Optimized",
    ConfigurationSaving = { Enabled = false }
 })
 
 -- PROMĚNNÉ
 local lp = game.Players.LocalPlayer
-local char = lp.Character or lp.CharacterAdded:Wait()
-local root = char:WaitForChild("HumanoidRootPart")
+local root = lp.Character:WaitForChild("HumanoidRootPart")
 local autoRaid = false
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- FUNKCE: TELEPORT A ÚTOK
-local function farmClosest()
-    local closest = nil
-    local dist = math.huge
-    
-    -- Hledání nejbližšího breakable v Raidu
+-- 1. FUNKCE: AUTO-START RAID (Klikání na UI)
+local function handleRaidStart()
     pcall(function()
-        for _, v in pairs(game.Workspace.__THINGS.Breakables:GetChildren()) do
-            if v:IsA("Model") and not v.Name:lower():find("boss") then
-                local d = (root.Position - v:GetModelCFrame().p).magnitude
+        -- Simulace příkazů pro spuštění raidu 4500
+        ReplicatedStorage.Network.Raid_Create:InvokeServer("StPatrick", 4500)
+        task.wait(0.5)
+        ReplicatedStorage.Network.Raid_Start:InvokeServer()
+    end)
+end
+
+-- 2. FUNKCE: TELEPORT & ÚTOK (Na nejbližší věc)
+local function farmStep()
+    pcall(function()
+        local closest = nil
+        local dist = math.huge
+        local breakables = game.Workspace.__THINGS.Breakables:GetChildren()
+        
+        for _, b in pairs(breakables) do
+            if b:IsA("Model") and not b.Name:lower():find("boss") then
+                local pos = b:GetModelCFrame().p
+                local d = (root.Position - pos).magnitude
                 if d < dist then
                     dist = d
-                    closest = v
+                    closest = b
                 end
             end
         end
         
         if closest then
-            -- Teleport k věci
             root.CFrame = closest:GetModelCFrame()
-            -- Útok petů
-            game:GetService("ReplicatedStorage").Network.Breakables_PlayerAttack:FireServer(closest.Name)
-            -- Sběr orbů
-            game:GetService("ReplicatedStorage").Network.Orb_Collect:FireServer()
+            ReplicatedStorage.Network.Breakables_PlayerAttack:FireServer(closest.Name)
+            ReplicatedStorage.Network.Orb_Collect:FireServer()
         end
     end)
 end
 
--- KATEGORIE: EVENT
+-- 3. FUNKCE: AUTO-LOOT (Truhly na konci)
+local function collectLoot()
+    pcall(function()
+        for _, chest in pairs(game.Workspace.__THINGS:GetChildren()) do
+            if (chest.Name:find("Chest") or chest.Name:find("Loot")) and not chest:FindFirstChild("Locked") then
+                root.CFrame = chest:GetModelCFrame() * CFrame.new(0, 2, 0)
+                ReplicatedStorage.Network.LootChest_Collect:FireServer(chest.Name)
+                task.wait(0.3)
+            end
+        end
+    end)
+end
+
+-- KATEGORIE: MAIN AUTOMATION
 local EventTab = Window:CreateTab("Auto Raid", 4483362458)
 
 EventTab:CreateToggle({
-   Name = "Full Auto: Start + Farm + Loot",
+   Name = "FULL AUTO (Start + Farm + Loot)",
    CurrentValue = false,
    Callback = function(v)
       autoRaid = v
       task.spawn(function()
          while autoRaid do
-            -- 1. Pokud nejsi v Raidu, zkus ho odstartovat (Level 4500)
-            if not game.Workspace.__THINGS.Breakables:FindFirstChildWhichIsA("Model") then
-                game:GetService("ReplicatedStorage").Network:FindFirstChild("Raid_Start"):InvokeServer("StPatrick", 4500)
-                task.wait(2)
-            end
+            -- Krok 1: Zkus odstartovat, pokud jsi venku
+            handleRaidStart()
             
-            -- 2. Farmení a teleportace
-            farmClosest()
+            -- Krok 2: Farmení (Teleportace)
+            farmStep()
             
-            -- 3. Kontrola lootu na konci (Teleport k chestkám)
-            pcall(function()
-                for _, chest in pairs(game.Workspace.__THINGS.LootChest:GetChildren()) do
-                    if not chest:FindFirstChild("Locked") then
-                        root.CFrame = chest:GetModelCFrame()
-                        game:GetService("ReplicatedStorage").Network.LootChest_Collect:FireServer(chest.Name)
-                        task.wait(0.5)
-                    end
-                end
-            end)
+            -- Krok 3: Kontrola a sebrání lootu
+            collectLoot()
             
             task.wait(0.1)
          end
@@ -77,22 +87,11 @@ EventTab:CreateToggle({
    end,
 })
 
--- KATEGORIE: PERFORMANCE
+-- KATEGORIE: PERFORMANCE & AFK
 local SettingsTab = Window:CreateTab("Settings", 4483362458)
 
 SettingsTab:CreateButton({
-   Name = "White Screen (Na noc)",
-   Callback = function()
-      local gui = Instance.new("ScreenGui", game.CoreGui)
-      local frame = Instance.new("Frame", gui)
-      frame.Size = UDim2.new(1, 0, 1, 0)
-      frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-      frame.ZIndex = 999999
-   end,
-})
-
-SettingsTab:CreateButton({
-   Name = "Anti-AFK",
+   Name = "Anti-AFK (Aktivovat pro noc)",
    Callback = function()
       local vu = game:GetService("VirtualUser")
       lp.Idled:Connect(function()
@@ -100,5 +99,17 @@ SettingsTab:CreateButton({
          task.wait(1)
          vu:Button2Up(Vector3.new(0,0,0),workspace.CurrentCamera.CFrame)
       end)
+      Rayfield:Notify({Title = "Systém", Content = "Anti-AFK je aktivní. Dobrou noc!"})
+   end,
+})
+
+SettingsTab:CreateButton({
+   Name = "White Screen (FPS Boost)",
+   Callback = function()
+      local gui = Instance.new("ScreenGui", game.CoreGui)
+      local frame = Instance.new("Frame", gui)
+      frame.Size = UDim2.new(1, 0, 1, 0)
+      frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+      frame.ZIndex = 999999
    end,
 })
