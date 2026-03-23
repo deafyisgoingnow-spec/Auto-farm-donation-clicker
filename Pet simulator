@@ -1,90 +1,46 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-   Name = "DARK BYTE",
-   LoadingTitle = "Smart Teleport System",
-   LoadingSubtitle = "Redmi 13C 5G Optimized",
-   ConfigurationSaving = { Enabled = false }
-})
-
--- PROMĚNNÉ
+-- DARK BYTE | LITE EDITION
 local lp = game.Players.LocalPlayer
-local vu = game:GetService("VirtualUser")
-local autoRaid = false
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- FUNKCE: KONTROLA, ZDA JSEM V RAIDU (Podle tvého videa)
-local function isInRaid()
-    -- V raidu se vždy objeví specifické věci v Workspace.__THINGS.Breakables
-    local breakables = game.Workspace.__THINGS.Breakables:GetChildren()
-    return #breakables > 0
+-- FUNKCE PRO AUTOMATICKÉ ZAPNUTÍ PO PŘIPOJENÍ
+local function startFarming()
+    task.spawn(function()
+        while true do
+            pcall(function()
+                local char = lp.Character or lp.CharacterAdded:Wait()
+                local root = char:WaitForChild("HumanoidRootPart")
+                
+                local closest = nil
+                local dist = math.huge
+                
+                -- Hledání nejbližšího breakable
+                for _, v in pairs(game.Workspace.__THINGS.Breakables:GetChildren()) do
+                    if v:IsA("Model") then
+                        local pos = v:GetModelCFrame().p
+                        local d = (root.Position - pos).magnitude
+                        if d < dist then
+                            dist = d
+                            closest = v
+                        end
+                    end
+                end
+                
+                if closest then
+                    -- Teleportace přímo k věci
+                    root.CFrame = closest:GetModelCFrame()
+                    -- Útok a sběr orbů
+                    ReplicatedStorage.Network.Breakables_PlayerAttack:FireServer(closest.Name)
+                    ReplicatedStorage.Network.Orb_Collect:FireServer()
+                end
+            end)
+            task.wait(0.1) -- Rychlost teleportace
+        end
+    end)
 end
 
--- KATEGORIE: EVENT
-local EventTab = Window:CreateTab("Auto Raid", 4483362458)
-
-EventTab:CreateToggle({
-   Name = "FULL AUTO (Safe Teleport)",
-   CurrentValue = false,
-   Callback = function(v)
-      autoRaid = v
-      task.spawn(function()
-         while autoRaid do
-            local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-            if not root then task.wait(1) continue end
-
-            -- 1. POKUD JSEM VENKU (Raid neběží): Jen klikej na Start a neportuj se!
-            if not isInRaid() then
-                pcall(function()
-                    -- Klikání na "Create" a "Start" v UI menu z tvého videa
-                    game:GetService("ReplicatedStorage").Network.Raid_Create:InvokeServer("StPatrick", 4500)
-                    task.wait(0.5)
-                    game:GetService("ReplicatedStorage").Network.Raid_Start:InvokeServer()
-                    
-                    -- Kontrola truhel na konci (Lootování se zapne jen když vidí chestku)
-                    for _, chest in pairs(game.Workspace.__THINGS:GetChildren()) do
-                        if chest.Name:find("Chest") or chest.Name:find("Loot") then
-                            root.CFrame = chest:GetModelCFrame()
-                            game:GetService("ReplicatedStorage").Network.LootChest_Collect:FireServer(chest.Name)
-                            task.wait(0.5)
-                        end
-                    end
-                end)
-            end
-
-            -- 2. POKUD JSEM V RAIDU: Zapni teleportaci k truhlám
-            if isInRaid() then
-                pcall(function()
-                    local closest = nil
-                    local dist = math.huge
-                    for _, b in pairs(game.Workspace.__THINGS.Breakables:GetChildren()) do
-                        if not b.Name:lower():find("boss") then
-                            local d = (root.Position - b:GetModelCFrame().p).magnitude
-                            if d < dist then dist = d; closest = b end
-                        end
-                    end
-                    if closest then
-                        -- TELEPORT AKTIVNÍ POUZE ZDE
-                        root.CFrame = closest:GetModelCFrame()
-                        game:GetService("ReplicatedStorage").Network.Breakables_PlayerAttack:FireServer(closest.Name)
-                    end
-                end)
-            end
-            
-            task.wait(0.1)
-         end
-      end)
-   end,
-})
-
--- SETTINGS (Anti-AFK atd.)
-local SettingsTab = Window:CreateTab("Settings", 4483362458)
-SettingsTab:CreateButton({
-   Name = "Anti-AFK",
-   Callback = function()
-      lp.Idled:Connect(function()
-         vu:Button2Down(Vector3.new(0,0,0),workspace.CurrentCamera.CFrame)
-         task.wait(1)
-         vu:Button2Up(Vector3.new(0,0,0),workspace.CurrentCamera.CFrame)
-      end)
-   end,
-})
+-- SPUŠTĚNÍ
+if game:IsLoaded() then
+    startFarming()
+else
+    game.Loaded:Connect(startFarming)
+end
