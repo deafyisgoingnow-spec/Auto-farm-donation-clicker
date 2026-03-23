@@ -1,44 +1,30 @@
--- Čekání na hru
+-- Čekání na načtení hry
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local lp = game.Players.LocalPlayer
-local RS = game:GetService("ReplicatedStorage")
-local Net = RS:WaitForChild("Network")
-
--- ANTI-AFK (Neviditelný, aby tě server neodpojil)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Network = ReplicatedStorage:WaitForChild("Network")
 local VU = game:GetService("VirtualUser")
+
+-- ANTI-AFK (Běží neviditelně na pozadí)
 lp.Idled:Connect(function()
     VU:CaptureController()
     VU:ClickButton2(Vector2.new())
 end)
 
--- FUNKCE PRO SBĚR VŠEHO, CO PADÁ (Gemy, Itemy, Orby)
-local function collectEverything()
-    pcall(function()
-        -- Vyvolá hromadný sběr všech orbů v okolí
-        Net:WaitForChild("Orb_Collect"):FireServer()
-        -- Alternativní metoda pro novější verze raidu
-        for _, v in pairs(game.Workspace.__THINGS.Orbs:GetChildren()) do
-            if v:IsA("Part") or v:IsA("MeshPart") then
-                Net:WaitForChild("Orb_Pickup"):FireServer(v.Name)
-            end
-        end
-    end)
-end
-
--- HLAVNÍ FUNKCE: TELEPORT + AGRESIVNÍ KLIKÁNÍ
-local function startUltimateFarm()
+-- HLAVNÍ FUNKCE PRO ÚTOK NA BREAKABLES
+local function startBreakableFarm()
     while true do
         pcall(function()
             local char = lp.Character or lp.CharacterAdded:Wait()
             local root = char:WaitForChild("HumanoidRootPart")
             
-            -- Najde nejbližší cíl
+            -- Hledání nejbližšího breakable objektu
             local closest = nil
             local dist = math.huge
-            local breakables = game.Workspace:WaitForChild("__THINGS"):WaitForChild("Breakables"):GetChildren()
+            local breakablesFolder = game.Workspace:WaitForChild("__THINGS"):WaitForChild("Breakables")
             
-            for _, v in pairs(breakables) do
+            for _, v in pairs(breakablesFolder:GetChildren()) do
                 if v:IsA("Model") and v.PrimaryPart then
                     local d = (root.Position - v.PrimaryPart.Position).magnitude
                     if d < dist then
@@ -49,40 +35,40 @@ local function startUltimateFarm()
             end
             
             if closest then
-                -- 1. TELEPORT: Hodí tě přímo na truhlu
+                -- 1. TELEPORT: Přesun přímo k breakable
                 root.CFrame = closest:GetModelCFrame()
                 
                 local targetId = closest.Name
-                local startTick = tick()
+                local startTime = tick()
                 
-                -- 2. SMYČKA PRO KLIKÁNÍ A ÚTOK (Dokud truhla žije)
-                while closest and closest.Parent and (tick() - startTick < 3) do
-                    -- ÚTOK PETŮ
-                    Net:WaitForChild("Breakables_PlayerAttack"):FireServer(targetId)
+                -- 2. SMYČKA ÚTOKU: Kliká a útočí, dokud breakable existuje
+                -- (S pojistkou 5 vteřin pro případ zaseknutí v raidu)
+                while closest and closest.Parent == breakablesFolder and (tick() - startTime < 5) do
                     
-                    -- RYCHLÝ AUTO-CLICK (2x pro jistotu)
-                    Net:WaitForChild("Breakables_PlayerClick"):FireServer(targetId)
-                    Net:WaitForChild("Breakables_PlayerClick"):FireServer(targetId)
+                    -- KLIKÁNÍ NA BREAKABLE (Network Call)
+                    Network.Breakables_PlayerClick:FireServer(targetId)
                     
-                    -- PRŮBĚŽNÝ SBĚR PADÁVAJÍCÍCH VĚCÍ
-                    collectEverything()
+                    -- ÚTOK PETŮ (Network Call)
+                    Network.Breakables_PlayerAttack:FireServer(targetId)
                     
-                    task.wait(0.01) -- Maximální povolená rychlost
+                    -- SBĚR VŠEHO (Gemy, Orby, Drops)
+                    Network.Orb_Collect:FireServer()
+                    
+                    task.wait(0.01) -- Maximální rychlost klikání
                 end
             end
         end)
-        -- Malá pauza, aby se mobil nepřehřál a stihl načíst další truhly v raidu
-        task.wait(0.05)
+        task.wait(0.05) -- Krátká pauza na refresh cílů
     end
 end
 
--- SPUŠTĚNÍ AUTOMATICKY PO NAČTENÍ
-task.spawn(startUltimateFarm)
+-- AUTOMATICKÉ SPUŠTĚNÍ PO NAČTENÍ
+task.spawn(startBreakableFarm)
 
--- AUTO-REJOIN (Při pádu tě vrátí zpět)
+-- AUTO-REJOIN (Při odpojení tě hodí zpět)
 game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
     if child.Name == "ErrorPrompt" then
-        task.wait(3)
+        task.wait(2)
         game:GetService("TeleportService"):Teleport(game.PlaceId, lp)
     end
 end)
