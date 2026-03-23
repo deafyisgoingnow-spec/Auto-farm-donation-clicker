@@ -1,9 +1,21 @@
--- DARK BYTE | LITE EDITION
+-- NASTAVENÍ PRO AUTO-EXECUTE (DELTA)
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
 local lp = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
 
--- FUNKCE PRO AUTOMATICKÉ ZAPNUTÍ PO PŘIPOJENÍ
-local function startFarming()
+-- ANTI-AFK (Aby tě hra nevyhodila)
+lp.Idled:Connect(function()
+    VirtualUser:Button2Down(Vector3.new(0,0,0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector3.new(0,0,0), workspace.CurrentCamera.CFrame)
+end)
+
+-- HLAVNÍ FUNKCE TELEPORTU
+local function startTeleportFarm()
     task.spawn(function()
         while true do
             pcall(function()
@@ -13,8 +25,9 @@ local function startFarming()
                 local closest = nil
                 local dist = math.huge
                 
-                -- Hledání nejbližšího breakable
-                for _, v in pairs(game.Workspace.__THINGS.Breakables:GetChildren()) do
+                -- Hledání nejbližšího objektu v Workspace
+                local breakables = game.Workspace.__THINGS.Breakables:GetChildren()
+                for _, v in pairs(breakables) do
                     if v:IsA("Model") then
                         local pos = v:GetModelCFrame().p
                         local d = (root.Position - pos).magnitude
@@ -26,21 +39,24 @@ local function startFarming()
                 end
                 
                 if closest then
-                    -- Teleportace přímo k věci
+                    -- Okamžitý teleport
                     root.CFrame = closest:GetModelCFrame()
-                    -- Útok a sběr orbů
+                    -- Útok petů a sběr orbů (pro gemy)
                     ReplicatedStorage.Network.Breakables_PlayerAttack:FireServer(closest.Name)
                     ReplicatedStorage.Network.Orb_Collect:FireServer()
                 end
             end)
-            task.wait(0.1) -- Rychlost teleportace
+            task.wait(0.1) -- Maximální rychlost pro Redmi 13C
         end
     end)
 end
 
--- SPUŠTĚNÍ
-if game:IsLoaded() then
-    startFarming()
-else
-    game.Loaded:Connect(startFarming)
-end
+-- SPUŠTĚNÍ FARMY
+startTeleportFarm()
+
+-- AUTO-REJOIN (Pokud tě to odpojí, zkusí se připojit zpět)
+game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
+    if child.Name == "ErrorPrompt" then
+        game:GetService("TeleportService"):Teleport(game.PlaceId, lp)
+    end
+end)
