@@ -1,4 +1,4 @@
--- NASTAVENÍ PRO AUTO-EXECUTE (DELTA)
+-- Čeká na načtení hry
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
@@ -7,56 +7,67 @@ local lp = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 
--- ANTI-AFK (Aby tě hra nevyhodila)
+-- ANTI-AFK (Běží neviditelně na pozadí)
 lp.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector3.new(0,0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector3.new(0,0,0), workspace.CurrentCamera.CFrame)
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
 end)
 
--- HLAVNÍ FUNKCE TELEPORTU
-local function startTeleportFarm()
-    task.spawn(function()
-        while true do
-            pcall(function()
-                local char = lp.Character or lp.CharacterAdded:Wait()
-                local root = char:WaitForChild("HumanoidRootPart")
-                
-                local closest = nil
-                local dist = math.huge
-                
-                -- Hledání nejbližšího objektu v Workspace
-                local breakables = game.Workspace.__THINGS.Breakables:GetChildren()
-                for _, v in pairs(breakables) do
-                    if v:IsA("Model") then
-                        local pos = v:GetModelCFrame().p
-                        local d = (root.Position - pos).magnitude
-                        if d < dist then
-                            dist = d
-                            closest = v
-                        end
+-- HLAVNÍ FUNKCE: TELEPORT + ÚTOK BEZ OHLEDU NA KAMERU
+local function runSmartFarm()
+    while true do
+        pcall(function()
+            local char = lp.Character or lp.CharacterAdded:Wait()
+            local root = char:WaitForChild("HumanoidRootPart")
+            
+            -- Najde nejbližší breakable
+            local closest = nil
+            local dist = math.huge
+            local things = game.Workspace.__THINGS.Breakables:GetChildren()
+            
+            for _, v in pairs(things) do
+                if v:IsA("Model") and v.PrimaryPart then
+                    local d = (root.Position - v.PrimaryPart.Position).magnitude
+                    if d < dist then
+                        dist = d
+                        closest = v
                     end
                 end
+            end
+            
+            if closest then
+                -- 1. TELEPORT: Hodí tě k objektu
+                root.CFrame = closest:GetModelCFrame()
                 
-                if closest then
-                    -- Okamžitý teleport
-                    root.CFrame = closest:GetModelCFrame()
-                    -- Útok petů a sběr orbů (pro gemy)
-                    ReplicatedStorage.Network.Breakables_PlayerAttack:FireServer(closest.Name)
+                -- 2. SMYČKA: Útoč na tuhle věc, dokud nezmizí
+                -- Ignoruje směr kamery, posílá ID truhly přímo serveru
+                while closest and closest.Parent == game.Workspace.__THINGS.Breakables do
+                    local targetId = closest.Name
+                    
+                    -- Útok petů (Network Call)
+                    ReplicatedStorage.Network.Breakables_PlayerAttack:FireServer(targetId)
+                    
+                    -- EXTRÉMNĚ RYCHLÝ KLIK (Network Call - neovlivňuje tvou kameru ani UI)
+                    ReplicatedStorage.Network.Breakables_PlayerClick:FireServer(targetId)
+                    
+                    -- Sběr gemů/orbů
                     ReplicatedStorage.Network.Orb_Collect:FireServer()
+                    
+                    task.wait(0.01) -- Max rychlost útoku
                 end
-            end)
-            task.wait(0.1) -- Maximální rychlost pro Redmi 13C
-        end
-    end)
+            end
+        end)
+        task.wait(0.05) -- Krátká pauza před dalším teleportem
+    end
 end
 
--- SPUŠTĚNÍ FARMY
-startTeleportFarm()
+-- SPUŠTĚNÍ HNED PO LOADU
+task.spawn(runSmartFarm)
 
--- AUTO-REJOIN (Pokud tě to odpojí, zkusí se připojit zpět)
+-- AUTO-REJOIN (Při chybě tě vrátí do hry)
 game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
     if child.Name == "ErrorPrompt" then
+        task.wait(2)
         game:GetService("TeleportService"):Teleport(game.PlaceId, lp)
     end
 end)
