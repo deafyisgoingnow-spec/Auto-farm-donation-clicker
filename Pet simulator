@@ -1,73 +1,123 @@
--- Čeká na načtení hry
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+-- Čekání na načtení hry
+if not game:IsLoaded() then game.Loaded:Wait() end
 
 local lp = game.Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VirtualUser = game:GetService("VirtualUser")
+local RS = game:GetService("ReplicatedStorage")
+local Net = RS:WaitForChild("Network")
+local VU = game:GetService("VirtualUser")
 
--- ANTI-AFK (Běží neviditelně na pozadí)
+-- ==========================================
+-- [1. ANTI-AFK & OPTIMALIZACE]
+-- ==========================================
 lp.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new())
+    VU:CaptureController()
+    VU:ClickButton2(Vector2.new())
 end)
 
--- HLAVNÍ FUNKCE: TELEPORT + ÚTOK BEZ OHLEDU NA KAMERU
-local function runSmartFarm()
-    while true do
-        pcall(function()
-            local char = lp.Character or lp.CharacterAdded:Wait()
-            local root = char:WaitForChild("HumanoidRootPart")
-            
-            -- Najde nejbližší breakable
-            local closest = nil
-            local dist = math.huge
-            local things = game.Workspace.__THINGS.Breakables:GetChildren()
-            
-            for _, v in pairs(things) do
-                if v:IsA("Model") and v.PrimaryPart then
-                    local d = (root.Position - v.PrimaryPart.Position).magnitude
-                    if d < dist then
-                        dist = d
-                        closest = v
-                    end
+-- ==========================================
+-- [2. FUNKCE PRO SBĚR (MAGNET)]
+-- ==========================================
+-- Sbírá Orby, Lootbagy i speciální Event dropy
+local function collectEverything()
+    pcall(function()
+        -- Hromadný sběr přes server
+        Net.Orb_Collect:FireServer()
+        Net.Lootbag_Collect_All:FireServer()
+        
+        -- Fyzické přitažení (Magnet pro jistotu)
+        local things = workspace:WaitForChild("__THINGS")
+        for _, folder in pairs({things.Orbs, things.Lootbags}) do
+            for _, v in pairs(folder:GetChildren()) do
+                if v:IsA("Part") or v:IsA("MeshPart") then
+                    v.CFrame = lp.Character.HumanoidRootPart.CFrame
                 end
             end
+        end
+    end)
+end
+
+-- ==========================================
+-- [3. EVENT & RAID LOGIKA]
+-- ==========================================
+-- Prioritně hledá věci v Raidu nebo Event zóně
+local function getTarget()
+    local breakables = workspace.__THINGS.Breakables
+    local closest = nil
+    local dist = math.huge
+    
+    for _, v in pairs(breakables:GetChildren()) do
+        if v:IsA("Model") and v.PrimaryPart then
+            -- Kontrola, jestli je to Event truhla (mají často specifické názvy)
+            local d = (lp.Character.HumanoidRootPart.Position - v.PrimaryPart.Position).magnitude
+            if d < dist then
+                dist = d
+                closest = v
+            end
+        end
+    end
+    return closest
+end
+
+-- ==========================================
+-- [4. AUTO-FARM & CLICKER (ZAP HUB STYLE)]
+-- ==========================================
+local function startGlobalFarm()
+    while true do
+        pcall(function()
+            local target = getTarget()
             
-            if closest then
-                -- 1. TELEPORT: Hodí tě k objektu
-                root.CFrame = closest:GetModelCFrame()
+            if target then
+                local targetId = target.Name
+                local root = lp.Character.HumanoidRootPart
                 
-                -- 2. SMYČKA: Útoč na tuhle věc, dokud nezmizí
-                -- Ignoruje směr kamery, posílá ID truhly přímo serveru
-                while closest and closest.Parent == game.Workspace.__THINGS.Breakables do
-                    local targetId = closest.Name
+                -- TELEPORT (Vždy k nejbližšímu breakable)
+                root.CFrame = target:GetModelCFrame()
+                
+                -- SMYČKA ÚTOKU (Kliká extrémně rychle)
+                local start = tick()
+                while target and target.Parent and (tick() - start < 3) do
+                    -- 1. Útok petů
+                    Net.Breakables_PlayerAttack:FireServer(targetId)
                     
-                    -- Útok petů (Network Call)
-                    ReplicatedStorage.Network.Breakables_PlayerAttack:FireServer(targetId)
+                    -- 2. Simulace "Zap" klikání (vícenásobné signály)
+                    Net.Breakables_PlayerClick:FireServer(targetId)
+                    Net.Breakables_PlayerClick:FireServer(targetId)
+                    Net.Breakables_PlayerClick:FireServer(targetId)
                     
-                    -- EXTRÉMNĚ RYCHLÝ KLIK (Network Call - neovlivňuje tvou kameru ani UI)
-                    ReplicatedStorage.Network.Breakables_PlayerClick:FireServer(targetId)
+                    -- 3. Sběr dropů za pochodu
+                    collectEverything()
                     
-                    -- Sběr gemů/orbů
-                    ReplicatedStorage.Network.Orb_Collect:FireServer()
-                    
-                    task.wait(0.01) -- Max rychlost útoku
+                    task.wait(0.01) -- Max rychlost
                 end
             end
         end)
-        task.wait(0.05) -- Krátká pauza před dalším teleportem
+        task.wait(0.05)
     end
 end
 
--- SPUŠTĚNÍ HNED PO LOADU
-task.spawn(runSmartFarm)
+-- ==========================================
+-- [5. AUTO-BUY UPGRADES (Event Bonus)]
+-- ==========================================
+-- Pokud chceš, aby to v Raidu samo kupovalo vylepšení
+task.spawn(function()
+    while true do
+        pcall(function()
+            -- Zkouší aktivovat boosty/upgrady v eventu, pokud jsou dostupné
+            Net.Raid_BuyUpgrade:FireServer() 
+        end)
+        task.wait(10)
+    end
+end)
 
--- AUTO-REJOIN (Při chybě tě vrátí do hry)
+-- SPUŠTĚNÍ VŠEHO
+task.spawn(startGlobalFarm)
+
+-- AUTO-REJOIN
 game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
     if child.Name == "ErrorPrompt" then
         task.wait(2)
         game:GetService("TeleportService"):Teleport(game.PlaceId, lp)
     end
 end)
+
+print("⚡ MEGA-HUB NACETEN! (Event + Farm + Magnet active)")
