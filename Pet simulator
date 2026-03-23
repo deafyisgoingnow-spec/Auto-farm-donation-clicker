@@ -1,26 +1,39 @@
--- Čeká na úplné načtení hry pro tvé Redmi 13C
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+-- Čekání na hru
+if not game:IsLoaded() then game.Loaded:Wait() end
 
 local lp = game.Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VirtualUser = game:GetService("VirtualUser")
+local RS = game:GetService("ReplicatedStorage")
+local Net = RS:WaitForChild("Network")
 
--- ANTI-AFK (Běží neviditelně na pozadí)
+-- ANTI-AFK (Neviditelný, aby tě server neodpojil)
+local VU = game:GetService("VirtualUser")
 lp.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new())
+    VU:CaptureController()
+    VU:ClickButton2(Vector2.new())
 end)
 
--- HLAVNÍ FUNKCE: AGRESIVNÍ KLIKÁNÍ + TELEPORT
-local function runUltimateFarm()
+-- FUNKCE PRO SBĚR VŠEHO, CO PADÁ (Gemy, Itemy, Orby)
+local function collectEverything()
+    pcall(function()
+        -- Vyvolá hromadný sběr všech orbů v okolí
+        Net:WaitForChild("Orb_Collect"):FireServer()
+        -- Alternativní metoda pro novější verze raidu
+        for _, v in pairs(game.Workspace.__THINGS.Orbs:GetChildren()) do
+            if v:IsA("Part") or v:IsA("MeshPart") then
+                Net:WaitForChild("Orb_Pickup"):FireServer(v.Name)
+            end
+        end
+    end)
+end
+
+-- HLAVNÍ FUNKCE: TELEPORT + AGRESIVNÍ KLIKÁNÍ
+local function startUltimateFarm()
     while true do
         pcall(function()
             local char = lp.Character or lp.CharacterAdded:Wait()
             local root = char:WaitForChild("HumanoidRootPart")
             
-            -- Najde nejbližší objekt (Breakable)
+            -- Najde nejbližší cíl
             local closest = nil
             local dist = math.huge
             local breakables = game.Workspace:WaitForChild("__THINGS"):WaitForChild("Breakables"):GetChildren()
@@ -36,40 +49,40 @@ local function runUltimateFarm()
             end
             
             if closest then
-                -- 1. TELEPORT: Okamžitý skok k cíli
+                -- 1. TELEPORT: Hodí tě přímo na truhlu
                 root.CFrame = closest:GetModelCFrame()
                 
-                -- 2. KLIKACÍ SMYČKA: Tady to buší do truhly
                 local targetId = closest.Name
-                -- Smyčka běží, dokud truhla existuje (nebo max 4 vteřiny pro raid bezpečí)
-                local start = tick()
-                while closest and closest.Parent and (tick() - start < 4) do
+                local startTick = tick()
+                
+                -- 2. SMYČKA PRO KLIKÁNÍ A ÚTOK (Dokud truhla žije)
+                while closest and closest.Parent and (tick() - startTick < 3) do
                     -- ÚTOK PETŮ
-                    ReplicatedStorage.Network.Breakables_PlayerAttack:FireServer(targetId)
+                    Net:WaitForChild("Breakables_PlayerAttack"):FireServer(targetId)
                     
-                    -- EXTRÉMNÍ KLIKÁNÍ (To, co ti minule chybělo)
-                    -- Posílá 2 kliky v jednom cyklu pro maximální rychlost
-                    ReplicatedStorage.Network.Breakables_PlayerClick:FireServer(targetId)
-                    ReplicatedStorage.Network.Breakables_PlayerClick:FireServer(targetId)
+                    -- RYCHLÝ AUTO-CLICK (2x pro jistotu)
+                    Net:WaitForChild("Breakables_PlayerClick"):FireServer(targetId)
+                    Net:WaitForChild("Breakables_PlayerClick"):FireServer(targetId)
                     
-                    -- SBĚR GEMŮ
-                    ReplicatedStorage.Network.Orb_Collect:FireServer()
+                    -- PRŮBĚŽNÝ SBĚR PADÁVAJÍCÍCH VĚCÍ
+                    collectEverything()
                     
-                    task.wait(0.01) -- Maximální rychlost, kterou Roblox server pobere
+                    task.wait(0.01) -- Maximální povolená rychlost
                 end
             end
         end)
-        task.wait(0.05) -- Krátká pauza na refresh, pokud nic není v dosahu
+        -- Malá pauza, aby se mobil nepřehřál a stihl načíst další truhly v raidu
+        task.wait(0.05)
     end
 end
 
--- SPUŠTĚNÍ
-task.spawn(runUltimateFarm)
+-- SPUŠTĚNÍ AUTOMATICKY PO NAČTENÍ
+task.spawn(startUltimateFarm)
 
--- AUTO-REJOIN (Návrat do hry při odpojení)
+-- AUTO-REJOIN (Při pádu tě vrátí zpět)
 game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
     if child.Name == "ErrorPrompt" then
-        task.wait(2)
+        task.wait(3)
         game:GetService("TeleportService"):Teleport(game.PlaceId, lp)
     end
 end)
