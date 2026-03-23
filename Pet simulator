@@ -1,30 +1,31 @@
--- Čekání na načtení hry
-if not game:IsLoaded() then game.Loaded:Wait() end
+-- Čeká na načtení hry
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
 
 local lp = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Network = ReplicatedStorage:WaitForChild("Network")
-local VU = game:GetService("VirtualUser")
+local VirtualUser = game:GetService("VirtualUser")
 
 -- ANTI-AFK (Běží neviditelně na pozadí)
 lp.Idled:Connect(function()
-    VU:CaptureController()
-    VU:ClickButton2(Vector2.new())
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
 end)
 
--- HLAVNÍ FUNKCE PRO ÚTOK NA BREAKABLES
-local function startBreakableFarm()
+-- HLAVNÍ FUNKCE: TELEPORT + ÚTOK BEZ OHLEDU NA KAMERU
+local function runSmartFarm()
     while true do
         pcall(function()
             local char = lp.Character or lp.CharacterAdded:Wait()
             local root = char:WaitForChild("HumanoidRootPart")
             
-            -- Hledání nejbližšího breakable objektu
+            -- Najde nejbližší breakable
             local closest = nil
             local dist = math.huge
-            local breakablesFolder = game.Workspace:WaitForChild("__THINGS"):WaitForChild("Breakables")
+            local things = game.Workspace.__THINGS.Breakables:GetChildren()
             
-            for _, v in pairs(breakablesFolder:GetChildren()) do
+            for _, v in pairs(things) do
                 if v:IsA("Model") and v.PrimaryPart then
                     local d = (root.Position - v.PrimaryPart.Position).magnitude
                     if d < dist then
@@ -35,37 +36,35 @@ local function startBreakableFarm()
             end
             
             if closest then
-                -- 1. TELEPORT: Přesun přímo k breakable
+                -- 1. TELEPORT: Hodí tě k objektu
                 root.CFrame = closest:GetModelCFrame()
                 
-                local targetId = closest.Name
-                local startTime = tick()
-                
-                -- 2. SMYČKA ÚTOKU: Kliká a útočí, dokud breakable existuje
-                -- (S pojistkou 5 vteřin pro případ zaseknutí v raidu)
-                while closest and closest.Parent == breakablesFolder and (tick() - startTime < 5) do
+                -- 2. SMYČKA: Útoč na tuhle věc, dokud nezmizí
+                -- Ignoruje směr kamery, posílá ID truhly přímo serveru
+                while closest and closest.Parent == game.Workspace.__THINGS.Breakables do
+                    local targetId = closest.Name
                     
-                    -- KLIKÁNÍ NA BREAKABLE (Network Call)
-                    Network.Breakables_PlayerClick:FireServer(targetId)
+                    -- Útok petů (Network Call)
+                    ReplicatedStorage.Network.Breakables_PlayerAttack:FireServer(targetId)
                     
-                    -- ÚTOK PETŮ (Network Call)
-                    Network.Breakables_PlayerAttack:FireServer(targetId)
+                    -- EXTRÉMNĚ RYCHLÝ KLIK (Network Call - neovlivňuje tvou kameru ani UI)
+                    ReplicatedStorage.Network.Breakables_PlayerClick:FireServer(targetId)
                     
-                    -- SBĚR VŠEHO (Gemy, Orby, Drops)
-                    Network.Orb_Collect:FireServer()
+                    -- Sběr gemů/orbů
+                    ReplicatedStorage.Network.Orb_Collect:FireServer()
                     
-                    task.wait(0.01) -- Maximální rychlost klikání
+                    task.wait(0.01) -- Max rychlost útoku
                 end
             end
         end)
-        task.wait(0.05) -- Krátká pauza na refresh cílů
+        task.wait(0.05) -- Krátká pauza před dalším teleportem
     end
 end
 
--- AUTOMATICKÉ SPUŠTĚNÍ PO NAČTENÍ
-task.spawn(startBreakableFarm)
+-- SPUŠTĚNÍ HNED PO LOADU
+task.spawn(runSmartFarm)
 
--- AUTO-REJOIN (Při odpojení tě hodí zpět)
+-- AUTO-REJOIN (Při chybě tě vrátí do hry)
 game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
     if child.Name == "ErrorPrompt" then
         task.wait(2)
