@@ -1,73 +1,113 @@
--- Čeká na načtení hry
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+-- Čekání na načtení hry pro tvé Redmi 13C
+if not game:IsLoaded() then game.Loaded:Wait() end
 
 local lp = game.Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VirtualUser = game:GetService("VirtualUser")
+local RS = game:GetService("ReplicatedStorage")
+local Net = RS:WaitForChild("Network")
+local VU = game:GetService("VirtualUser")
 
--- ANTI-AFK (Běží neviditelně na pozadí)
+-- ANTI-AFK (Běží neviditelně)
 lp.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new())
+    VU:CaptureController()
+    VU:ClickButton2(Vector2.new())
 end)
 
--- HLAVNÍ FUNKCE: TELEPORT + ÚTOK BEZ OHLEDU NA KAMERU
-local function runSmartFarm()
-    while true do
-        pcall(function()
-            local char = lp.Character or lp.CharacterAdded:Wait()
-            local root = char:WaitForChild("HumanoidRootPart")
-            
-            -- Najde nejbližší breakable
-            local closest = nil
-            local dist = math.huge
-            local things = game.Workspace.__THINGS.Breakables:GetChildren()
-            
-            for _, v in pairs(things) do
-                if v:IsA("Model") and v.PrimaryPart then
-                    local d = (root.Position - v.PrimaryPart.Position).magnitude
-                    if d < dist then
-                        dist = d
-                        closest = v
-                    end
+-- FUNKCE PRO SBĚR VŠEHO (Magnet)
+local function collectDrops()
+    pcall(function()
+        Net.Orb_Collect:FireServer()
+        Net.Lootbag_Collect_All:FireServer()
+    end)
+end
+
+-- INTELIGENTNÍ HLEDÁNÍ CÍLE (Priorita: Pot of Gold > Chests > Breakables)
+local function getBestTarget()
+    pcall(function()
+        local things = workspace:WaitForChild("__THINGS"):WaitForChild("Breakables")
+        local children = things:GetChildren()
+        local closest = nil
+        local dist = math.huge
+        local charPos = lp.Character.HumanoidRootPart.Position
+
+        -- 1. PRIORITA: Pot of Gold (Nejdůležitější v eventu)
+        for _, v in pairs(children) do
+            if v:IsA("Model") and v.PrimaryPart then
+                local name = v.Name:lower()
+                if name:find("pot of gold") or name:find("potofgold") then
+                    return v 
                 end
             end
+        end
+
+        -- 2. PRIORITA: Jakákoliv Chest
+        for _, v in pairs(children) do
+            if v:IsA("Model") and v.PrimaryPart then
+                if v.Name:lower():find("chest") then
+                    return v
+                end
+            end
+        end
+
+        -- 3. PRIORITA: Nejbližší Breakable
+        for _, v in pairs(children) do
+            if v:IsA("Model") and v.PrimaryPart then
+                local d = (charPos - v.PrimaryPart.Position).magnitude
+                if d < dist then
+                    dist = d
+                    closest = v
+                end
+            end
+        end
+        return closest
+    end)
+end
+
+-- HLAVNÍ SMYČKA FARMY
+local function startUltimateFarm()
+    while true do
+        pcall(function()
+            local target = getBestTarget()
             
-            if closest then
-                -- 1. TELEPORT: Hodí tě k objektu
-                root.CFrame = closest:GetModelCFrame()
+            if target then
+                local targetId = target.Name
+                local root = lp.Character.HumanoidRootPart
                 
-                -- 2. SMYČKA: Útoč na tuhle věc, dokud nezmizí
-                -- Ignoruje směr kamery, posílá ID truhly přímo serveru
-                while closest and closest.Parent == game.Workspace.__THINGS.Breakables do
-                    local targetId = closest.Name
+                -- TELEPORT: Přímo k objektu
+                root.CFrame = target:GetModelCFrame()
+                
+                -- EXTRÉMNÍ ÚTOK (Klikání a Pety)
+                local startTick = tick()
+                -- U Pot of Gold/Chest zůstane déle (8s), u malých věcí kratší dobu
+                local maxTime = target.Name:lower():find("pot") and 8 or 5
+                
+                while target and target.Parent and (tick() - startTick < maxTime) do
+                    -- Útok petů
+                    Net.Breakables_PlayerAttack:FireServer(targetId)
                     
-                    -- Útok petů (Network Call)
-                    ReplicatedStorage.Network.Breakables_PlayerAttack:FireServer(targetId)
+                    -- MEGA AUTO-CLICK (Dvojitý signál pro rychlost)
+                    Net.Breakables_PlayerClick:FireServer(targetId)
+                    Net.Breakables_PlayerClick:FireServer(targetId)
                     
-                    -- EXTRÉMNĚ RYCHLÝ KLIK (Network Call - neovlivňuje tvou kameru ani UI)
-                    ReplicatedStorage.Network.Breakables_PlayerClick:FireServer(targetId)
+                    -- Průběžný sběr všeho kolem
+                    collectDrops()
                     
-                    -- Sběr gemů/orbů
-                    ReplicatedStorage.Network.Orb_Collect:FireServer()
-                    
-                    task.wait(0.01) -- Max rychlost útoku
+                    task.wait(0.01) -- Max rychlost pro Redmi 13C
                 end
             end
         end)
-        task.wait(0.05) -- Krátká pauza před dalším teleportem
+        task.wait(0.05) -- Rychlý refresh pro další cíl
     end
 end
 
--- SPUŠTĚNÍ HNED PO LOADU
-task.spawn(runSmartFarm)
+-- SPUŠTĚNÍ
+task.spawn(startUltimateFarm)
 
--- AUTO-REJOIN (Při chybě tě vrátí do hry)
+-- AUTO-REJOIN
 game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
     if child.Name == "ErrorPrompt" then
         task.wait(2)
         game:GetService("TeleportService"):Teleport(game.PlaceId, lp)
     end
 end)
+
+print("🍀 EVENT DESTROYER AKTIVNI! (Targeting: Pot of Gold & Chests)")
