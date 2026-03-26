@@ -1,25 +1,24 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Pet Simulator 99: Event Hub",
+   Name = "Pet Simulator 99: Pro Hub",
    LoadingTitle = "Načítání pro Lukáše...",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = { Enabled = true, Folder = "PetSimLukash" }
 })
 
--- PROMĚNNÉ (Vypínače)
 local _G = {
     AutoFarm = false,
     AutoCollect = false,
     AntiAfk = false,
-    EditModeLoop = false
+    PetResetLoop = false
 }
 
 -- [TAB: HLAVNÍ FARMA]
 local MainTab = Window:CreateTab("Farma", 4483362458)
 
 MainTab:CreateToggle({
-   Name = "Auto-Farm (Chests/Pots/Coins)",
+   Name = "Auto-Farm (Clicker + TP)",
    CurrentValue = false,
    Callback = function(Value)
       _G.AutoFarm = Value
@@ -44,12 +43,16 @@ MainTab:CreateToggle({
                       end
 
                       if closest then
+                          -- TELEPORT k nejbližšímu (Breakable/Chest/Pot of Gold)
                           root.CFrame = closest:GetModelCFrame()
-                          game:GetService("ReplicatedStorage").Network.Breakables_PlayerClick:FireServer(closest.Name)
-                          game:GetService("ReplicatedStorage").Network.Breakables_PlayerAttack:FireServer(closest.Name)
+                          
+                          -- KLIKÁNÍ BEZ OVLIVNĚNÍ HRY (FireServer)
+                          local net = game:GetService("ReplicatedStorage").Network
+                          net.Breakables_PlayerClick:FireServer(closest.Name)
+                          net.Breakables_PlayerAttack:FireServer(closest.Name)
                       end
                   end)
-                  task.wait(0.1)
+                  task.wait(0.05) -- Rychlost klikání
               end
           end)
       end
@@ -57,7 +60,7 @@ MainTab:CreateToggle({
 })
 
 MainTab:CreateToggle({
-   Name = "Auto-Collect (Teleport k Orbům/Drops)",
+   Name = "Auto-Collect (TP k Dropům)",
    CurrentValue = false,
    Callback = function(Value)
       _G.AutoCollect = Value
@@ -69,13 +72,13 @@ MainTab:CreateToggle({
                       local root = game.Players.LocalPlayer.Character.HumanoidRootPart
                       for _, v in pairs(orbs) do
                           if v:IsA("Part") or v:IsA("MeshPart") then
-                              root.CFrame = v.CFrame -- Teleport k orbu
+                              root.CFrame = v.CFrame
                               game:GetService("ReplicatedStorage").Network.Orb_Collect:FireServer()
-                              task.wait(0.05)
+                              task.wait(0.02)
                           end
                       end
                   end)
-                  task.wait(0.5)
+                  task.wait(0.3)
               end
           end)
       end
@@ -86,18 +89,24 @@ MainTab:CreateToggle({
 local UtilsTab = Window:CreateTab("Utility", 4483345906)
 
 UtilsTab:CreateToggle({
-   Name = "Anti-AFK (Jump & Move)",
+   Name = "Pet Team Reset (Každé 2 minuty)",
    CurrentValue = false,
    Callback = function(Value)
-      _G.AntiAfk = Value
+      _G.PetResetLoop = Value
       if Value then
           task.spawn(function()
-              while _G.AntiAfk do
-                  local hum = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                  if hum then
-                      hum.Jump = true -- Výskok
-                  end
-                  task.wait(math.random(60, 110)) -- Každých cca 1.5 - 2 minuty
+              while _G.PetResetLoop do
+                  pcall(function()
+                      -- Simulace toho, co je na videu (Reset týmu petů)
+                      local net = game:GetService("ReplicatedStorage").Network
+                      -- Přepne / Resetuje týmy, aby se pety znovu vyvolali
+                      net.Teams_Select:FireServer(1) -- Vybere tým 1
+                      task.wait(1)
+                      net.Teams_Select:FireServer(2) -- Problikne na jiný
+                      task.wait(1)
+                      net.Teams_Select:FireServer(1) -- Vrátí zpět tým 1
+                  end)
+                  task.wait(120) -- Čeká 2 minuty
               end
           end)
       end
@@ -105,19 +114,16 @@ UtilsTab:CreateToggle({
 })
 
 UtilsTab:CreateToggle({
-   Name = "Auto-Edit Pet Mode (2 min Loop)",
+   Name = "Anti-AFK (Jump)",
    CurrentValue = false,
    Callback = function(Value)
-      _G.EditModeLoop = Value
+      _G.AntiAfk = Value
       if Value then
           task.spawn(function()
-              while _G.EditModeLoop do
-                  -- Zapnout Edit Mode
-                  game:GetService("ReplicatedStorage").Network.Pet_EditMode_Enable:FireServer()
-                  task.wait(2) -- Krátká pauza
-                  -- Vypnout Edit Mode
-                  game:GetService("ReplicatedStorage").Network.Pet_EditMode_Disable:FireServer()
-                  task.wait(120) -- Počkej 2 minuty
+              while _G.AntiAfk do
+                  local hum = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                  if hum then hum.Jump = true end
+                  task.wait(math.random(60, 110))
               end
           end)
       end
@@ -125,8 +131,8 @@ UtilsTab:CreateToggle({
 })
 
 Rayfield:Notify({
-   Title = "Skript spuštěn!",
-   Content = "Vítej Lukáši, tvoje menu je připraveno.",
+   Title = "Menu Načteno!",
+   Content = "Můžeš začít farmit, Lukáši.",
    Duration = 5,
    Image = 4483345906,
 })
