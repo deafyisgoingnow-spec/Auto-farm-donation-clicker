@@ -1,113 +1,132 @@
--- Čekání na načtení hry pro tvé Redmi 13C
-if not game:IsLoaded() then game.Loaded:Wait() end
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local lp = game.Players.LocalPlayer
-local RS = game:GetService("ReplicatedStorage")
-local Net = RS:WaitForChild("Network")
-local VU = game:GetService("VirtualUser")
+local Window = Rayfield:CreateWindow({
+   Name = "Pet Simulator 99: Event Hub",
+   LoadingTitle = "Načítání pro Lukáše...",
+   LoadingSubtitle = "by Gemini",
+   ConfigurationSaving = { Enabled = true, Folder = "PetSimLukash" }
+})
 
--- ANTI-AFK (Běží neviditelně)
-lp.Idled:Connect(function()
-    VU:CaptureController()
-    VU:ClickButton2(Vector2.new())
-end)
+-- PROMĚNNÉ (Vypínače)
+local _G = {
+    AutoFarm = false,
+    AutoCollect = false,
+    AntiAfk = false,
+    EditModeLoop = false
+}
 
--- FUNKCE PRO SBĚR VŠEHO (Magnet)
-local function collectDrops()
-    pcall(function()
-        Net.Orb_Collect:FireServer()
-        Net.Lootbag_Collect_All:FireServer()
-    end)
-end
+-- [TAB: HLAVNÍ FARMA]
+local MainTab = Window:CreateTab("Farma", 4483362458)
 
--- INTELIGENTNÍ HLEDÁNÍ CÍLE (Priorita: Pot of Gold > Chests > Breakables)
-local function getBestTarget()
-    pcall(function()
-        local things = workspace:WaitForChild("__THINGS"):WaitForChild("Breakables")
-        local children = things:GetChildren()
-        local closest = nil
-        local dist = math.huge
-        local charPos = lp.Character.HumanoidRootPart.Position
+MainTab:CreateToggle({
+   Name = "Auto-Farm (Chests/Pots/Coins)",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.AutoFarm = Value
+      if Value then
+          task.spawn(function()
+              while _G.AutoFarm do
+                  pcall(function()
+                      local things = workspace.__THINGS.Breakables:GetChildren()
+                      local lp = game.Players.LocalPlayer
+                      local root = lp.Character.HumanoidRootPart
+                      local closest = nil
+                      local dist = math.huge
 
-        -- 1. PRIORITA: Pot of Gold (Nejdůležitější v eventu)
-        for _, v in pairs(children) do
-            if v:IsA("Model") and v.PrimaryPart then
-                local name = v.Name:lower()
-                if name:find("pot of gold") or name:find("potofgold") then
-                    return v 
-                end
-            end
-        end
+                      for _, v in pairs(things) do
+                          if v:IsA("Model") and v.PrimaryPart then
+                              local d = (root.Position - v.PrimaryPart.Position).magnitude
+                              if d < dist then
+                                  dist = d
+                                  closest = v
+                              end
+                          end
+                      end
 
-        -- 2. PRIORITA: Jakákoliv Chest
-        for _, v in pairs(children) do
-            if v:IsA("Model") and v.PrimaryPart then
-                if v.Name:lower():find("chest") then
-                    return v
-                end
-            end
-        end
+                      if closest then
+                          root.CFrame = closest:GetModelCFrame()
+                          game:GetService("ReplicatedStorage").Network.Breakables_PlayerClick:FireServer(closest.Name)
+                          game:GetService("ReplicatedStorage").Network.Breakables_PlayerAttack:FireServer(closest.Name)
+                      end
+                  end)
+                  task.wait(0.1)
+              end
+          end)
+      end
+   end,
+})
 
-        -- 3. PRIORITA: Nejbližší Breakable
-        for _, v in pairs(children) do
-            if v:IsA("Model") and v.PrimaryPart then
-                local d = (charPos - v.PrimaryPart.Position).magnitude
-                if d < dist then
-                    dist = d
-                    closest = v
-                end
-            end
-        end
-        return closest
-    end)
-end
+MainTab:CreateToggle({
+   Name = "Auto-Collect (Teleport k Orbům/Drops)",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.AutoCollect = Value
+      if Value then
+          task.spawn(function()
+              while _G.AutoCollect do
+                  pcall(function()
+                      local orbs = workspace.__THINGS.Orbs:GetChildren()
+                      local root = game.Players.LocalPlayer.Character.HumanoidRootPart
+                      for _, v in pairs(orbs) do
+                          if v:IsA("Part") or v:IsA("MeshPart") then
+                              root.CFrame = v.CFrame -- Teleport k orbu
+                              game:GetService("ReplicatedStorage").Network.Orb_Collect:FireServer()
+                              task.wait(0.05)
+                          end
+                      end
+                  end)
+                  task.wait(0.5)
+              end
+          end)
+      end
+   end,
+})
 
--- HLAVNÍ SMYČKA FARMY
-local function startUltimateFarm()
-    while true do
-        pcall(function()
-            local target = getBestTarget()
-            
-            if target then
-                local targetId = target.Name
-                local root = lp.Character.HumanoidRootPart
-                
-                -- TELEPORT: Přímo k objektu
-                root.CFrame = target:GetModelCFrame()
-                
-                -- EXTRÉMNÍ ÚTOK (Klikání a Pety)
-                local startTick = tick()
-                -- U Pot of Gold/Chest zůstane déle (8s), u malých věcí kratší dobu
-                local maxTime = target.Name:lower():find("pot") and 8 or 5
-                
-                while target and target.Parent and (tick() - startTick < maxTime) do
-                    -- Útok petů
-                    Net.Breakables_PlayerAttack:FireServer(targetId)
-                    
-                    -- MEGA AUTO-CLICK (Dvojitý signál pro rychlost)
-                    Net.Breakables_PlayerClick:FireServer(targetId)
-                    Net.Breakables_PlayerClick:FireServer(targetId)
-                    
-                    -- Průběžný sběr všeho kolem
-                    collectDrops()
-                    
-                    task.wait(0.01) -- Max rychlost pro Redmi 13C
-                end
-            end
-        end)
-        task.wait(0.05) -- Rychlý refresh pro další cíl
-    end
-end
+-- [TAB: AUTOMATIZACE]
+local UtilsTab = Window:CreateTab("Utility", 4483345906)
 
--- SPUŠTĚNÍ
-task.spawn(startUltimateFarm)
+UtilsTab:CreateToggle({
+   Name = "Anti-AFK (Jump & Move)",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.AntiAfk = Value
+      if Value then
+          task.spawn(function()
+              while _G.AntiAfk do
+                  local hum = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                  if hum then
+                      hum.Jump = true -- Výskok
+                  end
+                  task.wait(math.random(60, 110)) -- Každých cca 1.5 - 2 minuty
+              end
+          end)
+      end
+   end,
+})
 
--- AUTO-REJOIN
-game:GetService("CoreGui").RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
-    if child.Name == "ErrorPrompt" then
-        task.wait(2)
-        game:GetService("TeleportService"):Teleport(game.PlaceId, lp)
-    end
-end)
+UtilsTab:CreateToggle({
+   Name = "Auto-Edit Pet Mode (2 min Loop)",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.EditModeLoop = Value
+      if Value then
+          task.spawn(function()
+              while _G.EditModeLoop do
+                  -- Zapnout Edit Mode
+                  game:GetService("ReplicatedStorage").Network.Pet_EditMode_Enable:FireServer()
+                  task.wait(2) -- Krátká pauza
+                  -- Vypnout Edit Mode
+                  game:GetService("ReplicatedStorage").Network.Pet_EditMode_Disable:FireServer()
+                  task.wait(120) -- Počkej 2 minuty
+              end
+          end)
+      end
+   end,
+})
 
-print("🍀 EVENT DESTROYER AKTIVNI! (Targeting: Pot of Gold & Chests)")
+Rayfield:Notify({
+   Title = "Skript spuštěn!",
+   Content = "Vítej Lukáši, tvoje menu je připraveno.",
+   Duration = 5,
+   Image = 4483345906,
+})
