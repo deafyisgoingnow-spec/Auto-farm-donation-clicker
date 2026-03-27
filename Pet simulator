@@ -2,7 +2,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "Pet Simulator 99: Pro Hub",
-   LoadingTitle = "Načítání pro Lukáše...",
+   LoadingTitle = "Oprava pro Lukáše...",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = { Enabled = true, Folder = "PetSimLukash" }
 })
@@ -13,6 +13,8 @@ local _G = {
     AntiAfk = false,
     PetResetLoop = false
 }
+
+local Net = game:GetService("ReplicatedStorage"):WaitForChild("Network")
 
 -- [TAB: HLAVNÍ FARMA]
 local MainTab = Window:CreateTab("Farma", 4483362458)
@@ -44,13 +46,12 @@ MainTab:CreateToggle({
 
                       if closest then
                           root.CFrame = closest:GetModelCFrame()
-                          local net = game:GetService("ReplicatedStorage").Network
-                          -- Klikání, které neovlivňuje tvou hru
-                          net.Breakables_PlayerClick:FireServer(closest.Name)
-                          net.Breakables_PlayerAttack:FireServer(closest.Name)
+                          -- Zkoušíme dvě různé cesty klikání pro jistotu
+                          Net.Breakables_PlayerClick:FireServer(closest.Name)
+                          Net.Clicking_PlayerClick:FireServer(closest.Name)
                       end
                   end)
-                  task.wait(0.05)
+                  task.wait(0.1)
               end
           end)
       end
@@ -58,7 +59,7 @@ MainTab:CreateToggle({
 })
 
 MainTab:CreateToggle({
-   Name = "Auto-Collect (TP k Dropům)",
+   Name = "Auto-Collect (Drops)",
    CurrentValue = false,
    Callback = function(Value)
       _G.AutoCollect = Value
@@ -66,28 +67,26 @@ MainTab:CreateToggle({
           task.spawn(function()
               while _G.AutoCollect do
                   pcall(function()
+                      Net.Orb_Collect:FireServer()
                       local orbs = workspace.__THINGS.Orbs:GetChildren()
-                      local root = game.Players.LocalPlayer.Character.HumanoidRootPart
                       for _, v in pairs(orbs) do
-                          if v:IsA("Part") or v:IsA("MeshPart") then
-                              root.CFrame = v.CFrame
-                              game:GetService("ReplicatedStorage").Network.Orb_Collect:FireServer()
-                              task.wait(0.02)
+                          if v:IsA("Part") then
+                              v.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame
                           end
                       end
                   end)
-                  task.wait(0.3)
+                  task.wait(0.5)
               end
           end)
       end
    end,
 })
 
--- [TAB: AUTOMATIZACE]
+-- [TAB: UTILITY]
 local UtilsTab = Window:CreateTab("Utility", 4483345906)
 
 UtilsTab:CreateToggle({
-   Name = "Pet Team Reset (Video Method)",
+   Name = "Pet Team Reset (1 minuta)",
    CurrentValue = false,
    Callback = function(Value)
       _G.PetResetLoop = Value
@@ -95,14 +94,12 @@ UtilsTab:CreateToggle({
           task.spawn(function()
               while _G.PetResetLoop do
                   pcall(function()
-                      local net = game:GetService("ReplicatedStorage").Network
-                      -- 1. Přepne na Team 2 (vyvolá reset)
-                      net.Teams_Select:FireServer(2)
-                      task.wait(0.5)
-                      -- 2. Přepne zpět na Team 1 (přesně podle videa)
-                      net.Teams_Select:FireServer(1)
+                      -- Použití InvokeServer (přesně to, co dělá hra v inventáři)
+                      Net.Teams_Select:InvokeServer(2)
+                      task.wait(1)
+                      Net.Teams_Select:InvokeServer(1)
                   end)
-                  task.wait(120) -- Opakuje každé 2 minuty
+                  task.wait(60) -- Reset každou 1 minutu
               end
           end)
       end
@@ -116,10 +113,15 @@ UtilsTab:CreateToggle({
       _G.AntiAfk = Value
       if Value then
           task.spawn(function()
+              local VU = game:GetService("VirtualUser")
+              game.Players.LocalPlayer.Idled:Connect(function()
+                  VU:CaptureController()
+                  VU:ClickButton2(Vector2.new())
+              end)
               while _G.AntiAfk do
                   local hum = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                   if hum then hum.Jump = true end
-                  task.wait(math.random(60, 110))
+                  task.wait(30)
               end
           end)
       end
@@ -128,8 +130,6 @@ UtilsTab:CreateToggle({
 
 Rayfield:Notify({
    Title = "Menu Načteno!",
-   Content = "Farma připravena, Lukáši.",
-   Duration = 5,
-   Image = 4483345906,
+   Content = "Opravený Reset (1 min) a Clicker.",
+   Duration = 5
 })
-
