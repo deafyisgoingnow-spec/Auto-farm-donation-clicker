@@ -43,16 +43,14 @@ MainTab:CreateToggle({
                       end
 
                       if closest then
-                          -- TELEPORT k nejbližšímu (Breakable/Chest/Pot of Gold)
                           root.CFrame = closest:GetModelCFrame()
-                          
-                          -- KLIKÁNÍ BEZ OVLIVNĚNÍ HRY (FireServer)
                           local net = game:GetService("ReplicatedStorage").Network
+                          -- Klikání, které neovlivňuje tvou hru
                           net.Breakables_PlayerClick:FireServer(closest.Name)
                           net.Breakables_PlayerAttack:FireServer(closest.Name)
                       end
                   end)
-                  task.wait(0.05) -- Rychlost klikání
+                  task.wait(0.05)
               end
           end)
       end
@@ -89,7 +87,7 @@ MainTab:CreateToggle({
 local UtilsTab = Window:CreateTab("Utility", 4483345906)
 
 UtilsTab:CreateToggle({
-   Name = "Pet Team Reset (Každé 2 minuty)",
+   Name = "Pet Team Reset (Video Method)",
    CurrentValue = false,
    Callback = function(Value)
       _G.PetResetLoop = Value
@@ -97,16 +95,14 @@ UtilsTab:CreateToggle({
           task.spawn(function()
               while _G.PetResetLoop do
                   pcall(function()
-                      -- Simulace toho, co je na videu (Reset týmu petů)
                       local net = game:GetService("ReplicatedStorage").Network
-                      -- Přepne / Resetuje týmy, aby se pety znovu vyvolali
-                      net.Teams_Select:FireServer(1) -- Vybere tým 1
-                      task.wait(1)
-                      net.Teams_Select:FireServer(2) -- Problikne na jiný
-                      task.wait(1)
-                      net.Teams_Select:FireServer(1) -- Vrátí zpět tým 1
+                      -- 1. Přepne na Team 2 (vyvolá reset)
+                      net.Teams_Select:FireServer(2)
+                      task.wait(0.5)
+                      -- 2. Přepne zpět na Team 1 (přesně podle videa)
+                      net.Teams_Select:FireServer(1)
                   end)
-                  task.wait(120) -- Čeká 2 minuty
+                  task.wait(120) -- Opakuje každé 2 minuty
               end
           end)
       end
@@ -132,7 +128,8 @@ UtilsTab:CreateToggle({
 
 Rayfield:Notify({
    Title = "Menu Načteno!",
-   Content = "Můžeš začít farmit, Lukáši.",
+   Content = "Farma připravena, Lukáši.",
    Duration = 5,
    Image = 4483345906,
 })
+
