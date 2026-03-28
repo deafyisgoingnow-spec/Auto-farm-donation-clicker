@@ -1,8 +1,8 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Pet Simulator 99: Pro Hub",
-   LoadingTitle = "Oprava pro Lukáše...",
+   Name = "Pet Simulator 99: Hard Reset",
+   LoadingTitle = "Simulace klikání...",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = { Enabled = true, Folder = "PetSimLukash" }
 })
@@ -14,13 +14,21 @@ local _G = {
     PetResetLoop = false
 }
 
-local Net = game:GetService("ReplicatedStorage"):WaitForChild("Network")
+local VU = game:GetService("VirtualUser")
+local lp = game.Players.LocalPlayer
+
+-- FUNKCE PRO KLIKÁNÍ NA OBRAZOVKU (Simulace prstu)
+local function clickAt(x, y)
+    VU:Button1Down(Vector2.new(x, y))
+    task.wait(0.1)
+    VU:Button1Up(Vector2.new(x, y))
+end
 
 -- [TAB: HLAVNÍ FARMA]
 local MainTab = Window:CreateTab("Farma", 4483362458)
 
 MainTab:CreateToggle({
-   Name = "Auto-Farm (Clicker + TP)",
+   Name = "Auto-Farm (Simulated Clicks)",
    CurrentValue = false,
    Callback = function(Value)
       _G.AutoFarm = Value
@@ -29,7 +37,6 @@ MainTab:CreateToggle({
               while _G.AutoFarm do
                   pcall(function()
                       local things = workspace.__THINGS.Breakables:GetChildren()
-                      local lp = game.Players.LocalPlayer
                       local root = lp.Character.HumanoidRootPart
                       local closest = nil
                       local dist = math.huge
@@ -46,36 +53,13 @@ MainTab:CreateToggle({
 
                       if closest then
                           root.CFrame = closest:GetModelCFrame()
-                          -- Zkoušíme dvě různé cesty klikání pro jistotu
-                          Net.Breakables_PlayerClick:FireServer(closest.Name)
-                          Net.Clicking_PlayerClick:FireServer(closest.Name)
+                          -- Klikne doprostřed obrazovky (na truhlu)
+                          VU:Button1Down(Vector2.new(500, 500))
+                          task.wait(0.05)
+                          VU:Button1Up(Vector2.new(500, 500))
                       end
                   end)
                   task.wait(0.1)
-              end
-          end)
-      end
-   end,
-})
-
-MainTab:CreateToggle({
-   Name = "Auto-Collect (Drops)",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.AutoCollect = Value
-      if Value then
-          task.spawn(function()
-              while _G.AutoCollect do
-                  pcall(function()
-                      Net.Orb_Collect:FireServer()
-                      local orbs = workspace.__THINGS.Orbs:GetChildren()
-                      for _, v in pairs(orbs) do
-                          if v:IsA("Part") then
-                              v.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame
-                          end
-                      end
-                  end)
-                  task.wait(0.5)
               end
           end)
       end
@@ -86,7 +70,7 @@ MainTab:CreateToggle({
 local UtilsTab = Window:CreateTab("Utility", 4483345906)
 
 UtilsTab:CreateToggle({
-   Name = "Pet Team Reset (1 minuta)",
+   Name = "Pet Team Reset (Manual UI - 1 min)",
    CurrentValue = false,
    Callback = function(Value)
       _G.PetResetLoop = Value
@@ -94,12 +78,22 @@ UtilsTab:CreateToggle({
           task.spawn(function()
               while _G.PetResetLoop do
                   pcall(function()
-                      -- Použití InvokeServer (přesně to, co dělá hra v inventáři)
-                      Net.Teams_Select:InvokeServer(2)
+                      -- 1. KLIK NA INVENTÁŘ (Tlačítko s pety dole)
+                      clickAt(500, 900) 
                       task.wait(1)
-                      Net.Teams_Select:InvokeServer(1)
+                      
+                      -- 2. KLIK NA TÝM #2 (Pozice tlačítka 2 v menu)
+                      clickAt(450, 400) 
+                      task.wait(0.5)
+                      
+                      -- 3. KLIK NA TÝM #1 (Pozice tlačítka 1 v menu)
+                      clickAt(350, 400) 
+                      task.wait(0.5)
+                      
+                      -- 4. ZAVŘÍT INVENTÁŘ (Křížek nahoře)
+                      clickAt(900, 100) 
                   end)
-                  task.wait(60) -- Reset každou 1 minutu
+                  task.wait(60) -- Každou minutu
               end
           end)
       end
@@ -113,15 +107,10 @@ UtilsTab:CreateToggle({
       _G.AntiAfk = Value
       if Value then
           task.spawn(function()
-              local VU = game:GetService("VirtualUser")
-              game.Players.LocalPlayer.Idled:Connect(function()
-                  VU:CaptureController()
-                  VU:ClickButton2(Vector2.new())
-              end)
               while _G.AntiAfk do
-                  local hum = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                  local hum = lp.Character:FindFirstChildOfClass("Humanoid")
                   if hum then hum.Jump = true end
-                  task.wait(30)
+                  task.wait(45)
               end
           end)
       end
@@ -130,6 +119,6 @@ UtilsTab:CreateToggle({
 
 Rayfield:Notify({
    Title = "Menu Načteno!",
-   Content = "Opravený Reset (1 min) a Clicker.",
+   Content = "Simulované klikání aktivní (1 min reset).",
    Duration = 5
 })
