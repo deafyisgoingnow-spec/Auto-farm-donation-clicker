@@ -1,0 +1,108 @@
+-- Vytvoření GUI Menu
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local TextLabel = Instance.new("TextLabel")
+local ToggleButton = Instance.new("TextButton")
+local UICorner_Frame = Instance.new("UICorner")
+local UICorner_Button = Instance.new("UICorner")
+
+-- Nastavení GUI (aby to vypadalo čistě a dalo se s tím hýbat)
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.ResetOnSpawn = false
+
+MainFrame.Name = "SeedFarmMenu"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+MainFrame.Position = UDim2.new(0.1, 0, 0.2, 0)
+MainFrame.Size = UDim2.new(0, 200, 0, 130)
+MainFrame.Active = true
+MainFrame.Draggable = true -- Menu můžeš prstem posouvat po obrazovce
+
+UICorner_Frame.CornerRadius = UDim.new(0, 12)
+UICorner_Frame.Parent = MainFrame
+
+TextLabel.Parent = MainFrame
+TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+TextLabel.BackgroundTransparency = 1.0
+TextLabel.Size = UDim2.new(1, 0, 0.4, 0)
+TextLabel.Font = Enum.Font.SourceSansBold
+TextLabel.Text = "GAG2 - Seed Farm"
+TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextLabel.TextSize = 20.0
+
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = MainFrame
+ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Červená (Vypnuto)
+ToggleButton.Position = UDim2.new(0.1, 0, 0.45, 0)
+ToggleButton.Size = UDim2.new(0, 160, 0, 45)
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Text = "AUTOFARM: VYPNUTO"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 16.0
+
+UICorner_Button.CornerRadius = UDim.new(0, 8)
+UICorner_Button.Parent = ToggleButton
+
+-- Logika farmení
+local _G = _G or {}
+_G.SeedFarmActive = false
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Funkce, která bezpečně sebere nalezený seed
+local function collectSeed(seed)
+    local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if rootPart and seed:IsA("BasePart") or seed:IsA("Model") then
+        -- Teleportace mírně nad seed, aby postava nezapadla
+        rootPart.CFrame = seed:GetPivot() * CFrame.new(0, 1.5, 0)
+        task.wait(0.25) -- Čas pro hru, aby zaregistrovala, že tu stojíš
+        
+        -- Hledání ProximityPromptu (tlačítka pro sebrání)
+        local prompt = seed:FindFirstChildOfClass("ProximityPrompt") or seed:FindFirstChildHierarchy("ProximityPrompt")
+        if prompt then
+            -- Podržení a zmáčknutí tlačítka přes executor
+            fireproximityprompt(prompt, 1)
+        end
+        task.wait(0.35) -- Bezpečnostní pauza před dalším teleportem proti kicku
+    end
+end
+
+-- Nekonečná smyčka běžící na pozadí
+task.spawn(function()
+    while true do
+        if _G.SeedFarmActive then
+            local foundSeed = false
+            
+            -- Prohledá celou mapu (workspace)
+            for _, item in pairs(workspace:GetDescendants()) do
+                if _G.SeedFarmActive == false then break end
+                
+                -- Kontrola správných názvů seedů
+                if item.Name == "Gold Seed" or item.Name == "Rainbow Seed" or item.Name == "Mega Seed" then
+                    foundSeed = true
+                    collectSeed(item)
+                end
+            end
+            
+            -- Pokud na mapě zrovna žádný vzácný seed není, chvíli počká a zkusí to znova
+            if not foundSeed then
+                task.wait(1)
+            end
+        else
+            task.wait(0.5) -- Pokud je farm vypnutá, skript odpočívá
+        end
+    end
+end)
+
+-- Funkce tlačítka pro zapnutí/vypnutí
+ToggleButton.MouseButton1Click:Connect(function()
+    _G.SeedFarmActive = not _G.SeedFarmActive
+    if _G.SeedFarmActive then
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50) -- Zelená
+        ToggleButton.Text = "AUTOFARM: ZAPNUTO"
+    else
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Červená
+        ToggleButton.Text = "AUTOFARM: VYPNUTO"
+    end
+end)
