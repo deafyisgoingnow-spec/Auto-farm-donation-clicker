@@ -1,21 +1,11 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local KavoUi = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = KavoUi.CreateLib("Grow a Garden 2 | Hackee Hub", "DarkTheme")
 
-local Window = Rayfield:CreateWindow({
-   Name = "Grow a Garden 2 | Hackee Hub",
-   LoadingTitle = "Načítání skriptu podle videa...",
-   LoadingSubtitle = "by Gemini",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "GAG2_Hackee",
-      FileName = "config"
-   }
-})
-
--- Proměnné pro hlavní vypínače
+-- Hlavní vypínače
 local AutoBuySeeds = false
 local AutoBuyGear = false
 
--- SEED SHOP (Seřazeno přesně podle videa odshora dolů)
+-- Seznamy položek přesně podle tvého videa
 local SeedOrder = {
    "Carrot", "Strawberry", "Blueberry", "Tulip", "Tomato", "Apple", "Bamboo",
    "Corn", "Cactus", "Pineapple", "Mushroom", "Green Bean", "Banana", "Grape",
@@ -24,7 +14,6 @@ local SeedOrder = {
    "Moon Bloom", "Hypno Bloom", "Dragon's Breath"
 }
 
--- GEAR SHOP (Seřazeno přesně podle videa odshora dolů)
 local GearOrder = {
    "Common Watering Can", "Common Sprinkler", "Sign", "Uncommon Sprinkler",
    "Trowel", "Rare Sprinkler", "Jump Mushroom", "Speed Mushroom", "Megaphone",
@@ -33,73 +22,47 @@ local GearOrder = {
    "Strawberry Sniper", "Super Watering Can", "Super Sprinkler"
 }
 
--- Inicializace tabulek pro zaškrtnuté položky
+-- Příprava tabulek pro uložení zapnutých položek
 local SelectedSeeds = {}
 for _, seed in ipairs(SeedOrder) do SelectedSeeds[seed] = false end
 
 local SelectedGear = {}
 for _, gear in ipairs(GearOrder) do SelectedGear[gear] = false end
 
--- Hledání Remote Events ve hře
+-- Vyhledání síťových příkazů (Remotes) hry
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local BuySeedRemote = nil
-local BuyGearRemote = nil
+local BuySeedRemote = ReplicatedStorage:FindFirstChild("BuySeed", true) or ReplicatedStorage:FindFirstChild("Seed", true)
+local BuyGearRemote = ReplicatedStorage:FindFirstChild("BuyGear", true) or ReplicatedStorage:FindFirstChild("Gear", true)
 
-for _, child in pairs(ReplicatedStorage:GetDescendants()) do
-    if child:IsA("RemoteEvent") then
-        if child.Name:lower():find("buyseed") or child.Name:lower():find("purchaseseed") or child.Name == "Seed" then
-            BuySeedRemote = child
-        elseif child.Name:lower():find("buygear") or child.Name:lower():find("purchasegear") or child.Name == "Gear" then
-            BuyGearRemote = child
-        end
-    end
+-- STRÁNKA: SEED SHOP
+local SeedPage = Window:NewTab("Seed Shop")
+local SeedSection = SeedPage:NewSection("Nákup Semínek")
+
+SeedSection:NewToggle("💡 ZAPNOUT NÁKUP SEEDŮ", "Zapne/vypne automatické kupování vybraných seedů", function(state)
+    AutoBuySeeds = state
+end)
+
+for _, seedName in ipairs(SeedOrder) do
+    SeedSection:NewToggle("Kupovat " .. seedName, "Přidat do nákupního seznamu", function(state)
+        SelectedSeeds[seedName] = state
+    end)
 end
 
-if not BuySeedRemote then BuySeedRemote = ReplicatedStorage:FindFirstChild("BuySeed", true) end
-if not BuyGearRemote then BuyGearRemote = ReplicatedStorage:FindFirstChild("BuyGear", true) end
+-- STRÁNKA: GEAR SHOP
+local GearPage = Window:NewTab("Gear Shop")
+local GearSection = GearPage:NewSection("Nákup Vybavení")
 
+GearSection:NewToggle("💡 ZAPNOUT NÁKUP GEARU", "Zapne/vypne automatické kupování vybraného gearu", function(state)
+    AutoBuyGear = state
+end)
 
--- ZÁLOŽKA: SEED SHOP
-local SeedTab = Window:CreateTab("Seed Shop", 4483362458)
-
-SeedTab:CreateToggle({
-   Name = "💡 Zapnout/Vypnout nákup Seedů",
-   CurrentValue = false,
-   Callback = function(Value) AutoBuySeeds = Value end,
-})
-
-SeedTab:CreateSection("Které seedy kupovat (Seřazeno podle hry):")
-
-for _, seedName do
-   SeedTab:CreateToggle({
-      Name = "Kupovat " .. seedName,
-      CurrentValue = false,
-      Callback = function(Value) SelectedSeeds[seedName] = Value end,
-   })
+for _, gearName in ipairs(GearOrder) do
+    GearSection:NewToggle("Kupovat " .. gearName, "Přidat do nákupního seznamu", function(state)
+        SelectedGear[gearName] = state
+    end)
 end
 
-
--- ZÁLOŽKA: GEAR SHOP
-local GearTab = Window:CreateTab("Gear Shop", 4483362601)
-
-GearTab:CreateToggle({
-   Name = "💡 Zapnout/Vypnout nákup Gearu",
-   CurrentValue = false,
-   Callback = function(Value) AutoBuyGear = Value end,
-})
-
-GearTab:CreateSection("Které vybavení kupovat (Seřazeno podle hry):")
-
-for _, gearName do
-   GearTab:CreateToggle({
-      Name = "Kupovat " .. gearName,
-      CurrentValue = false,
-      Callback = function(Value) SelectedGear[gearName] = Value end,
-   })
-end
-
-
--- AUTOMATICKÉ SMYČKY NA POZADÍ (NÁKUP)
+-- SMYČKY PRO NÁKUP NA POZADÍ
 task.spawn(function()
    while task.wait(0.3) do
       if AutoBuySeeds and BuySeedRemote then
@@ -123,10 +86,3 @@ task.spawn(function()
       end
    end
 end)
-
-Rayfield:Notify({
-   Title = "Menu nastaveno!",
-   Content = "Všechny položky byly seřazeny přesně podle obchodu ve videu.",
-   Duration = 5,
-   Image = 4483362458,
-})
