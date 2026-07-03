@@ -1,108 +1,131 @@
--- Vytvoření GUI Menu
-local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local TextLabel = Instance.new("TextLabel")
-local ToggleButton = Instance.new("TextButton")
-local UICorner_Frame = Instance.new("UICorner")
-local UICorner_Button = Instance.new("UICorner")
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Nastavení GUI (aby to vypadalo čistě a dalo se s tím hýbat)
-ScreenGui.Parent = game:GetService("CoreGui")
-ScreenGui.ResetOnSpawn = false
+local Window = Rayfield:CreateWindow({
+   Name = "Grow a Garden 2 | Hackee Hub",
+   LoadingTitle = "Načítání skriptu...",
+   LoadingSubtitle = "by Gemini",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "GAG2_Hackee",
+      FileName = "config"
+   }
+})
 
-MainFrame.Name = "SeedFarmMenu"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-MainFrame.Position = UDim2.new(0.1, 0, 0.2, 0)
-MainFrame.Size = UDim2.new(0, 200, 0, 130)
-MainFrame.Active = true
-MainFrame.Draggable = true -- Menu můžeš prstem posouvat po obrazovce
+-- Proměnné pro nastavení (Toggles)
+local AutoBuySeeds = false
+local AutoBuyGear = false
 
-UICorner_Frame.CornerRadius = UDim.new(0, 12)
-UICorner_Frame.Parent = MainFrame
+-- Tabulka pro vybrané seedy
+local SelectedSeeds = {
+   ["Carrot"] = false,
+   ["Bamboo"] = false,
+   ["Mushroom"] = false,
+   ["Venom spitter"] = false,
+   ["Moon bloom"] = false,
+   ["Dragon's breath"] = false,
+   ["Hypno bloom"] = false
+}
 
-TextLabel.Parent = MainFrame
-TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-TextLabel.BackgroundTransparency = 1.0
-TextLabel.Size = UDim2.new(1, 0, 0.4, 0)
-TextLabel.Font = Enum.Font.SourceSansBold
-TextLabel.Text = "GAG2 - Seed Farm"
-TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TextLabel.TextSize = 20.0
+-- Tabulka pro vybraný gear
+local SelectedGear = {
+   ["Common watering can"] = false,
+   ["Basic pot"] = false,
+   ["Legendary sprinkler"] = false,
+   ["Super sprinkler"] = false,
+   ["Super watering can"] = false
+}
 
-ToggleButton.Name = "ToggleButton"
-ToggleButton.Parent = MainFrame
-ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Červená (Vypnuto)
-ToggleButton.Position = UDim2.new(0.1, 0, 0.45, 0)
-ToggleButton.Size = UDim2.new(0, 160, 0, 45)
-ToggleButton.Font = Enum.Font.SourceSansBold
-ToggleButton.Text = "AUTOFARM: VYPNUTO"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.TextSize = 16.0
+-- REPLICATED STORAGE / REMOTES PATH (Cesty pro nákup v GAG2)
+-- Poznámka: Pokud hra změní názvy Remotes, je potřeba upravit tyto cesty.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local BuySeedRemote = ReplicatedStorage:FindFirstChild("BuySeed") or ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("BuySeed")
+local BuyGearRemote = ReplicatedStorage:FindFirstChild("BuyGear") or ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("BuyGear")
 
-UICorner_Button.CornerRadius = UDim.new(0, 8)
-UICorner_Button.Parent = ToggleButton
+-- ZÁLOŽKA: SEED SHOP
+local SeedTab = Window:CreateTab("Seed Shop", 4483362458) -- Ikona listu
 
--- Logika farmení
-local _G = _G or {}
-_G.SeedFarmActive = false
+SeedTab:CreateToggle({
+   Name = "💡 Zapnout/Vypnout nákup Seedů",
+   CurrentValue = false,
+   Flag = "ToggleSeeds",
+   Callback = function(Value)
+      AutoBuySeeds = Value
+   end,
+})
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+SeedTab:CreateSection("Které seedy kupovat:")
 
--- Funkce, která bezpečně sebere nalezený seed
-local function collectSeed(seed)
-    local rootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if rootPart and seed:IsA("BasePart") or seed:IsA("Model") then
-        -- Teleportace mírně nad seed, aby postava nezapadla
-        rootPart.CFrame = seed:GetPivot() * CFrame.new(0, 1.5, 0)
-        task.wait(0.25) -- Čas pro hru, aby zaregistrovala, že tu stojíš
-        
-        -- Hledání ProximityPromptu (tlačítka pro sebrání)
-        local prompt = seed:FindFirstChildOfClass("ProximityPrompt") or seed:FindFirstChildHierarchy("ProximityPrompt")
-        if prompt then
-            -- Podržení a zmáčknutí tlačítka přes executor
-            fireproximityprompt(prompt, 1)
-        end
-        task.wait(0.35) -- Bezpečnostní pauza před dalším teleportem proti kicku
-    end
+for seedName, _ in pairs(SelectedSeeds) do
+   SeedTab:CreateToggle({
+      Name = "Kupovat " .. seedName,
+      CurrentValue = false,
+      Callback = function(Value)
+         SelectedSeeds[seedName] = Value
+      end,
+   })
 end
 
--- Nekonečná smyčka běžící na pozadí
+-- ZÁLOŽKA: GEAR SHOP
+local GearTab = Window:CreateTab("Gear Shop", 4483362601) -- Ikona nářadí
+
+GearTab:CreateToggle({
+   Name = "💡 Zapnout/Vypnout nákup Gearu",
+   CurrentValue = false,
+   Flag = "ToggleGear",
+   Callback = function(Value)
+      AutoBuyGear = Value
+   end,
+})
+
+GearTab:CreateSection("Které vybavení kupovat:")
+
+for gearName, _ in pairs(SelectedGear) do
+   GearTab:CreateToggle({
+      Name = "Kupovat " .. gearName,
+      CurrentValue = false,
+      Callback = function(Value)
+         SelectedGear[gearName] = Value
+      end,
+   })
+end
+
+-- NEKONEČNÉ SMYČKY NA POZADÍ (AUTOMATICKÝ NÁKUP)
+
+-- Smyčka pro Seedy
 task.spawn(function()
-    while true do
-        if _G.SeedFarmActive then
-            local foundSeed = false
-            
-            -- Prohledá celou mapu (workspace)
-            for _, item in pairs(workspace:GetDescendants()) do
-                if _G.SeedFarmActive == false then break end
-                
-                -- Kontrola správných názvů seedů
-                if item.Name == "Gold Seed" or item.Name == "Rainbow Seed" or item.Name == "Mega Seed" then
-                    foundSeed = true
-                    collectSeed(item)
-                end
+   while task.wait(0.5) do -- Kontrola každou půl vteřinu (nezpůsobí lagy a koupí hned při restocku)
+      if AutoBuySeeds then
+         for seed, status in pairs(SelectedSeeds) do
+            if status then
+               -- Pokud máš zapnutý tento seed, pošle se příkaz hře ke koupi
+               if BuySeedRemote then
+                  BuySeedRemote:FireServer(seed)
+               end
             end
-            
-            -- Pokud na mapě zrovna žádný vzácný seed není, chvíli počká a zkusí to znova
-            if not foundSeed then
-                task.wait(1)
-            end
-        else
-            task.wait(0.5) -- Pokud je farm vypnutá, skript odpočívá
-        end
-    end
+         end
+      end
+   end
 end)
 
--- Funkce tlačítka pro zapnutí/vypnutí
-ToggleButton.MouseButton1Click:Connect(function()
-    _G.SeedFarmActive = not _G.SeedFarmActive
-    if _G.SeedFarmActive then
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50) -- Zelená
-        ToggleButton.Text = "AUTOFARM: ZAPNUTO"
-    else
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Červená
-        ToggleButton.Text = "AUTOFARM: VYPNUTO"
-    end
+-- Smyčka pro Gear (včetně tvého Legendary Sprinkleru)
+task.spawn(function()
+   while task.wait(0.5) do
+      if AutoBuyGear then
+         for gear, status in pairs(SelectedGear) do
+            if status then
+               -- Pokud máš zapnutý tento gear, pošle se příkaz hře ke koupi
+               if BuyGearRemote then
+                  BuyGearRemote:FireServer(gear)
+               end
+            end
+         end
+      end
+   end
 end)
+
+Rayfield:Notify({
+   Title = "Skript připraven!",
+   Content = "Můžeš začít ovládat Seed a Gear shop.",
+   Duration = 5,
+   Image = 4483362458,
+})
