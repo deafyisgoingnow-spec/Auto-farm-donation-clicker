@@ -2,7 +2,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "Grow a Garden 2 | Hackee Hub",
-   LoadingTitle = "Načítání skriptu...",
+   LoadingTitle = "Načítání skriptu podle videa...",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = {
       Enabled = true,
@@ -11,112 +11,113 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
--- Proměnné pro nastavení (Toggles)
+-- Proměnné pro hlavní vypínače
 local AutoBuySeeds = false
 local AutoBuyGear = false
 
--- Tabulka pro vybrané seedy
-local SelectedSeeds = {
-   ["Carrot"] = false,
-   ["Bamboo"] = false,
-   ["Mushroom"] = false,
-   ["Venom spitter"] = false,
-   ["Moon bloom"] = false,
-   ["Dragon's breath"] = false,
-   ["Hypno bloom"] = false
+-- SEED SHOP (Seřazeno přesně podle videa odshora dolů)
+local SeedOrder = {
+   "Carrot", "Strawberry", "Blueberry", "Tulip", "Tomato", "Apple", "Bamboo",
+   "Corn", "Cactus", "Pineapple", "Mushroom", "Green Bean", "Banana", "Grape",
+   "Coconut", "Mango", "Dragon Fruit", "Acorn", "Cherry", "Sunflower",
+   "Venus Fly Trap", "Pomegranate", "Poison Apple", "Venom Splitter",
+   "Moon Bloom", "Hypno Bloom", "Dragon's Breath"
 }
 
--- Tabulka pro vybraný gear
-local SelectedGear = {
-   ["Common watering can"] = false,
-   ["Basic pot"] = false,
-   ["Legendary sprinkler"] = false,
-   ["Super sprinkler"] = false,
-   ["Super watering can"] = false
+-- GEAR SHOP (Seřazeno přesně podle videa odshora dolů)
+local GearOrder = {
+   "Common Watering Can", "Common Sprinkler", "Sign", "Uncommon Sprinkler",
+   "Trowel", "Rare Sprinkler", "Jump Mushroom", "Speed Mushroom", "Megaphone",
+   "Shrink Mushroom", "Supersize Mushroom", "Gnome", "Flashbang", "Basic Pot",
+   "Invisibility Mushroom", "Legendary Sprinkler", "Wheelbarrow", "Player Magnet",
+   "Strawberry Sniper", "Super Watering Can", "Super Sprinkler"
 }
 
--- REPLICATED STORAGE / REMOTES PATH (Cesty pro nákup v GAG2)
--- Poznámka: Pokud hra změní názvy Remotes, je potřeba upravit tyto cesty.
+-- Inicializace tabulek pro zaškrtnuté položky
+local SelectedSeeds = {}
+for _, seed in ipairs(SeedOrder) do SelectedSeeds[seed] = false end
+
+local SelectedGear = {}
+for _, gear in ipairs(GearOrder) do SelectedGear[gear] = false end
+
+-- Hledání Remote Events ve hře
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local BuySeedRemote = ReplicatedStorage:FindFirstChild("BuySeed") or ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("BuySeed")
-local BuyGearRemote = ReplicatedStorage:FindFirstChild("BuyGear") or ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("BuyGear")
+local BuySeedRemote = nil
+local BuyGearRemote = nil
+
+for _, child in pairs(ReplicatedStorage:GetDescendants()) do
+    if child:IsA("RemoteEvent") then
+        if child.Name:lower():find("buyseed") or child.Name:lower():find("purchaseseed") or child.Name == "Seed" then
+            BuySeedRemote = child
+        elseif child.Name:lower():find("buygear") or child.Name:lower():find("purchasegear") or child.Name == "Gear" then
+            BuyGearRemote = child
+        end
+    end
+end
+
+if not BuySeedRemote then BuySeedRemote = ReplicatedStorage:FindFirstChild("BuySeed", true) end
+if not BuyGearRemote then BuyGearRemote = ReplicatedStorage:FindFirstChild("BuyGear", true) end
+
 
 -- ZÁLOŽKA: SEED SHOP
-local SeedTab = Window:CreateTab("Seed Shop", 4483362458) -- Ikona listu
+local SeedTab = Window:CreateTab("Seed Shop", 4483362458)
 
 SeedTab:CreateToggle({
    Name = "💡 Zapnout/Vypnout nákup Seedů",
    CurrentValue = false,
-   Flag = "ToggleSeeds",
-   Callback = function(Value)
-      AutoBuySeeds = Value
-   end,
+   Callback = function(Value) AutoBuySeeds = Value end,
 })
 
-SeedTab:CreateSection("Které seedy kupovat:")
+SeedTab:CreateSection("Které seedy kupovat (Seřazeno podle hry):")
 
-for seedName, _ in pairs(SelectedSeeds) do
+for _, seedName do
    SeedTab:CreateToggle({
       Name = "Kupovat " .. seedName,
       CurrentValue = false,
-      Callback = function(Value)
-         SelectedSeeds[seedName] = Value
-      end,
+      Callback = function(Value) SelectedSeeds[seedName] = Value end,
    })
 end
 
+
 -- ZÁLOŽKA: GEAR SHOP
-local GearTab = Window:CreateTab("Gear Shop", 4483362601) -- Ikona nářadí
+local GearTab = Window:CreateTab("Gear Shop", 4483362601)
 
 GearTab:CreateToggle({
    Name = "💡 Zapnout/Vypnout nákup Gearu",
    CurrentValue = false,
-   Flag = "ToggleGear",
-   Callback = function(Value)
-      AutoBuyGear = Value
-   end,
+   Callback = function(Value) AutoBuyGear = Value end,
 })
 
-GearTab:CreateSection("Které vybavení kupovat:")
+GearTab:CreateSection("Které vybavení kupovat (Seřazeno podle hry):")
 
-for gearName, _ in pairs(SelectedGear) do
+for _, gearName do
    GearTab:CreateToggle({
       Name = "Kupovat " .. gearName,
       CurrentValue = false,
-      Callback = function(Value)
-         SelectedGear[gearName] = Value
-      end,
+      Callback = function(Value) SelectedGear[gearName] = Value end,
    })
 end
 
--- NEKONEČNÉ SMYČKY NA POZADÍ (AUTOMATICKÝ NÁKUP)
 
--- Smyčka pro Seedy
+-- AUTOMATICKÉ SMYČKY NA POZADÍ (NÁKUP)
 task.spawn(function()
-   while task.wait(0.5) do -- Kontrola každou půl vteřinu (nezpůsobí lagy a koupí hned při restocku)
-      if AutoBuySeeds then
+   while task.wait(0.3) do
+      if AutoBuySeeds and BuySeedRemote then
          for seed, status in pairs(SelectedSeeds) do
             if status then
-               -- Pokud máš zapnutý tento seed, pošle se příkaz hře ke koupi
-               if BuySeedRemote then
-                  BuySeedRemote:FireServer(seed)
-               end
+               BuySeedRemote:FireServer(seed)
             end
          end
       end
    end
 end)
 
--- Smyčka pro Gear (včetně tvého Legendary Sprinkleru)
 task.spawn(function()
-   while task.wait(0.5) do
-      if AutoBuyGear then
+   while task.wait(0.3) do
+      if AutoBuyGear and BuyGearRemote then
          for gear, status in pairs(SelectedGear) do
             if status then
-               -- Pokud máš zapnutý tento gear, pošle se příkaz hře ke koupi
-               if BuyGearRemote then
-                  BuyGearRemote:FireServer(gear)
-               end
+               BuyGearRemote:FireServer(gear)
             end
          end
       end
@@ -124,8 +125,8 @@ task.spawn(function()
 end)
 
 Rayfield:Notify({
-   Title = "Skript připraven!",
-   Content = "Můžeš začít ovládat Seed a Gear shop.",
+   Title = "Menu nastaveno!",
+   Content = "Všechny položky byly seřazeny přesně podle obchodu ve videu.",
    Duration = 5,
    Image = 4483362458,
 })
